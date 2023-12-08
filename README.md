@@ -48,11 +48,11 @@ This PowerShell script is designed to analyze the status and health of Simplivit
 
 - This script assumes connectivity to a VMware vCenter Server and proper authentication.
 - Review the script output and generated report for actionable insights and potential issues.
-- For more details and troubleshooting information, refer to the [full script documentation](https://link-to-full-script-documentation).
+- For more details and troubleshooting information, refer to the [full script documentation](https://github.com/emrbaykal/PowerShell/blob/main/README.md).
 
 ## Issues and Contributions
 
-- If you encounter any issues or have suggestions for improvements, please [open an issue](https://link-to-issue-tracker).
+- If you encounter any issues or have suggestions for improvements, please [open an issue](https://github.com/emrbaykal/PowerShell/issues).
 - Contributions are welcome! Feel free to fork the repository and submit pull requests.
 
 ## License
