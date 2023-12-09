@@ -4,6 +4,8 @@
 
 This PowerShell script is designed to analyze the status and health of Simplivity Cluster within a VMware environment for before upgrade process. It retrieves information about the hosts, checks various metrics, and generates a comprehensive report for administrators.
 
+AUTHOR  : Emre Baykal HPE Services
+
 ## Features
 
 - **Host Information:** Retrieves details about ESXi hosts, including connection state, power state, overall status, and resource usage.

@@ -25,7 +25,8 @@
 	
     Company : Hewlett Packard Enterprise
     Version : 3.0.0.0
-    Date    : 12/05/2023 
+    Date    : 12/05/2023
+	AUTHOR  : Emre Baykal HPE Services
 #>
 
 Write-Host "`n####################################################################"
@@ -383,8 +384,28 @@ try
 				}
 				Write-Host "Local Backup Capacity:             $local_backup_space TiB"
 				
-				# Get SVT Host Status
 				
+				# Get SVT Datastore Status
+				Write-Host "`n### SVT Datastore List ###"
+				$DSDetailList = Get-SvtDatastore | Where-Object  ClusterName -eq $clusterstate.omnistack_clusters[$ClusterId].name |  Select-Object DatastoreName, SizeGB, SingleReplica, ClusterName, Deleted, PolicyName
+				
+				$DatastoreTable = @()
+
+				foreach ($DSDetail in $DSDetailList) {
+					$dsInfo = New-Object PSObject -Property @{
+						'Datastore Name' = $DSDetail.DatastoreName
+						'Size GB' = $DSDetail.SizeGB
+						'Cluster Name' = $DSDetail.ClusterName
+						'Single Replica' = $DSDetail.SingleReplica
+						'Deleted' = $DSDetail.Deleted
+						'Backup Policy Name' = $DSDetail.PolicyName
+					}
+					$DatastoreTable += $dsInfo
+				}
+				# Display Detail of Datastore to the table
+				$DatastoreTable | Format-Table -Property 'Datastore Name', 'Size GB', 'Cluster Name', 'Single Replica', 'Deleted', 'Backup Policy Name'
+				
+				# Get SVT Host Status
 				Write-Host "`n### SVT Host List ###"
 				
 				$hostlist = Get-Cluster -Name $clusterstate.omnistack_clusters[$ClusterId].name | Get-VMHost
