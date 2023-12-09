@@ -255,30 +255,30 @@ try
 	if ($clusterstate) {
 
 		do {
-				# Display the names of array members with index numbers
-				Write-Host "Omnistack Cluster Name             ID"
-				Write-Host "-----------------------         ---------"
-				for ($i = 0; $i -lt $clusterstate.omnistack_clusters.Count; $i++) {
-					Write-Host " $($clusterstate.omnistack_clusters[$i].name)                           $i"
-				}
+			# Display the names of array members with index numbers
+			Write-Host "Omnistack Cluster Name             ID"
+			Write-Host "-----------------------         ---------"
+			for ($i = 0; $i -lt $clusterstate.omnistack_clusters.Count; $i++) {
+				Write-Host " $($clusterstate.omnistack_clusters[$i].name)                           $i"
+			}
 
-				Write-Host "`n"
-				 
-				# Prompt the user to select a cluster by id
-				$ClusterId = Read-Host "Enter the id of the Omnistack cluster you want to select"
+			Write-Host "`n"
+			 
+			# Prompt the user to select a cluster by id
+			$ClusterId = Read-Host "Enter the id of the Omnistack cluster you want to select"
 
 
-				# Prompt user for confirmation
-				Write-Host "Selected Cluster: $($clusterstate.omnistack_clusters[$ClusterId].name)" -ForegroundColor Yellow
-				$confirmation = Read-Host -Prompt "`nDo you confirm the entered information? (Y/N)"
-		 
-				if (($confirmation -eq 'Y' -or $confirmation -eq 'y') -and $clusterstate.omnistack_clusters[$ClusterId].name -ne $NULL) {
-						Write-Host "Information confirmed. Proceeding with the script...`n"
-						break  
-				} else {
-						Write-Host "Entry not approved. Please fill in the information again.`n"
-				
-				}
+			# Prompt user for confirmation
+			Write-Host "Selected Cluster: $($clusterstate.omnistack_clusters[$ClusterId].name)" -ForegroundColor Yellow
+			$confirmation = Read-Host -Prompt "`nDo you confirm the entered information? (Y/N)"
+	 
+			if (($confirmation -eq 'Y' -or $confirmation -eq 'y') -and $clusterstate.omnistack_clusters[$ClusterId].name -ne $NULL) {
+					Write-Host "Information confirmed. Proceeding with the script...`n"
+					break  
+			} else {
+					Write-Host "Entry not approved. Please fill in the information again.`n"
+			
+			}
 		} while ($true)
 		
 		$CLSReportFile = "$($ReportDirPath)\$($clusterstate.omnistack_clusters[$ClusterId].name)-$($logtimestamp).log"
@@ -346,21 +346,21 @@ try
 		Write-Host "`nRequired Arbiter:                  $($clusterstate.omnistack_clusters[$ClusterId].arbiter_required)"
 		
 		if ($clusterstate.omnistack_clusters[$ClusterId].arbiter_required -eq 'true') {
-				if ($clusterstate.omnistack_clusters[$ClusterId].arbiter_configured -eq 'true') {
-					  Write-Host "Arbiter Configured ?:               $($clusterstate.omnistack_clusters[$ClusterId].arbiter_configured)"
-					  
-					  if ($clusterstate.omnistack_clusters[$ClusterId].arbiter_connected -eq 'true') {
-							  Write-Host "Arbiter Conected ?:                 $($clusterstate.omnistack_clusters[$ClusterId].arbiter_connected)"
-							  Write-Host "Arbiter Address ?:                  $($clusterstate.omnistack_clusters[$ClusterId].arbiter_address)"
-						  else {
-							 Write-Host "Arbiter Conected ?:                 $($clusterstate.omnistack_clusters[$ClusterId].arbiter_connected)" -ForegroundColor Red
-							 $arbiterconnected = 1 
-						  }
+			if ($clusterstate.omnistack_clusters[$ClusterId].arbiter_configured -eq 'true') {
+				  Write-Host "Arbiter Configured ?:               $($clusterstate.omnistack_clusters[$ClusterId].arbiter_configured)"
+				  
+				  if ($clusterstate.omnistack_clusters[$ClusterId].arbiter_connected -eq 'true') {
+						  Write-Host "Arbiter Conected ?:                 $($clusterstate.omnistack_clusters[$ClusterId].arbiter_connected)"
+						  Write-Host "Arbiter Address ?:                  $($clusterstate.omnistack_clusters[$ClusterId].arbiter_address)"
+					  else {
+						 Write-Host "Arbiter Conected ?:                 $($clusterstate.omnistack_clusters[$ClusterId].arbiter_connected)" -ForegroundColor Red
+						 $arbiterconnected = 1 
 					  }
-				} else {
-					  Write-Host "Arbiter Configured ?:                  $($clusterstate.omnistack_clusters[$ClusterId].arbiter_configured)" -ForegroundColor Red
-					  $arbiterconfigured = 1
-				}
+				  }
+			} else {
+				  Write-Host "Arbiter Configured ?:                  $($clusterstate.omnistack_clusters[$ClusterId].arbiter_configured)" -ForegroundColor Red
+				  $arbiterconfigured = 1
+			}
 			
 		}
 		
@@ -469,29 +469,29 @@ try
 				Write-Host "`nMessage: The status of the cluster ($($clusterstate.omnistack_clusters[$ClusterId].name)) is consistent and you can continue to upgrade ...." -ForegroundColor Green
 		} else {
 			
-			   Write-Host "`nMessage: SVT cluster ($($clusterstate.omnistack_clusters[$ClusterId].name)) status is not consistent and should fix error states !!! " -ForegroundColor Red
-			   
-			   if ($upgradestate) {
-				Write-Host "`nError Message: Update status not in the expected state... "  -ForegroundColor Red
-				}
-				if ($memberscount) {
-				Write-Host "`nError Message: Svt cluster ($($clusterstate.omnistack_clusters[$ClusterId].name)) is comprised of more than 16 HPE OmniStack hosts... "  -ForegroundColor Red
-				}
-				if ($arbiterconfigured) {
-				Write-Host "`nError Message: Arbiter host configuration is required. It has not been configured... "  -ForegroundColor Red
-				}
-				if ($arbiterconnected) {
-				Write-Host "`nError Message: Arbiter host is configured, but not connected to the SVT cluster... "  -ForegroundColor Red
-				}
-				if ($storagefreestate) {
-				Write-Host "`nError Message: Free space is below the value required for upgrading... "  -ForegroundColor Red
-				}
-				if ($vmreplicasetdegreded.Count -ne 0) {
-				Write-Host "`nError Message: Some Of virtual machines HA NOT COMPLIANT... "  -ForegroundColor Red
-				}
-				if ($vmclsstate) {
-				Write-Host "`nError Message: There are some errors or warnings in the cluster, check cluster state... "  -ForegroundColor yellow
-				}
+		   Write-Host "`nMessage: SVT cluster ($($clusterstate.omnistack_clusters[$ClusterId].name)) status is not consistent and should fix error states !!! " -ForegroundColor Red
+		   
+		   if ($upgradestate) {
+			Write-Host "`nError Message: Update status not in the expected state... "  -ForegroundColor Red
+			}
+			if ($memberscount) {
+			Write-Host "`nError Message: Svt cluster ($($clusterstate.omnistack_clusters[$ClusterId].name)) is comprised of more than 16 HPE OmniStack hosts... "  -ForegroundColor Red
+			}
+			if ($arbiterconfigured) {
+			Write-Host "`nError Message: Arbiter host configuration is required. It has not been configured... "  -ForegroundColor Red
+			}
+			if ($arbiterconnected) {
+			Write-Host "`nError Message: Arbiter host is configured, but not connected to the SVT cluster... "  -ForegroundColor Red
+			}
+			if ($storagefreestate) {
+			Write-Host "`nError Message: Free space is below the value required for upgrading... "  -ForegroundColor Red
+			}
+			if ($vmreplicasetdegreded.Count -ne 0) {
+			Write-Host "`nError Message: Some Of virtual machines HA NOT COMPLIANT... "  -ForegroundColor Red
+			}
+			if ($vmclsstate) {
+			Write-Host "`nError Message: There are some errors or warnings in the cluster, check cluster state... "  -ForegroundColor yellow
+			}
 		}	
 	
 		Stop-Transcript
@@ -621,35 +621,35 @@ try
 		  
 			} else {
 				
-				   Write-Host "Message: SVT Host ( $($svthost.name) status is not consistent and should fix error states !!! `n" -ForegroundColor Red
-				   
-				   if ($hostconnectivity) {
-					Write-Host "Error Message: SVT Host ( $($svthost.name) State Not Alive `n"  -ForegroundColor Red
-					}
-					if ($hostupgradestate) {
-					Write-Host "Error Message: SVT Host ( $($svthost.name) Update status not in the expected state...`n "  -ForegroundColor Red
-					}
-					if ($hostdisktstate) {
-					Write-Host "Error Message: Detection of faulty discs on the SVT host ( $($svthost.name) , opening of a support case... `n"  -ForegroundColor Red
-					}
-					if ($hostversion) {
-					Write-Host "Error Message: Incompatible software version actively running on SVT host ( $($svthost.name)  ... `n"  -ForegroundColor Red
-					}
-					if ($hwstate) {
-					Write-Host "Error Message: Detection of faulty hardware component on the SVT host ( $($svthost.name) , opening of a support case... `n"  -ForegroundColor Red
-					}
-					if ($raidhwstate) {
-					Write-Host "Error Message: Detection of faulty raid card on the SVT host ( $($svthost.name) , opening of a support case... `n"  -ForegroundColor Red
-					}
-					if ($raidbatteryhwstate) {
-					Write-Host "Error Message: Detection of faulty raid card battery on the SVT host ( $($svthost.name) , opening of a support case... `n"  -ForegroundColor Red
-					}
-					if ($cpuusage) {
-					Write-Host "Error Message: High CPU usage detected on the SVT host ( $($svthost.name) ... `n"  -ForegroundColor yellow
-					}
-					if ($memusage) {
-					Write-Host "Error Message: High Memory usage detected on the SVT host ( $($svthost.name) ... `n"  -ForegroundColor yellow
-					}
+			   Write-Host "Message: SVT Host ( $($svthost.name) status is not consistent and should fix error states !!! `n" -ForegroundColor Red
+			   
+			   if ($hostconnectivity) {
+				Write-Host "Error Message: SVT Host ( $($svthost.name) State Not Alive `n"  -ForegroundColor Red
+				}
+				if ($hostupgradestate) {
+				Write-Host "Error Message: SVT Host ( $($svthost.name) Update status not in the expected state...`n "  -ForegroundColor Red
+				}
+				if ($hostdisktstate) {
+				Write-Host "Error Message: Detection of faulty discs on the SVT host ( $($svthost.name) , opening of a support case... `n"  -ForegroundColor Red
+				}
+				if ($hostversion) {
+				Write-Host "Error Message: Incompatible software version actively running on SVT host ( $($svthost.name)  ... `n"  -ForegroundColor Red
+				}
+				if ($hwstate) {
+				Write-Host "Error Message: Detection of faulty hardware component on the SVT host ( $($svthost.name) , opening of a support case... `n"  -ForegroundColor Red
+				}
+				if ($raidhwstate) {
+				Write-Host "Error Message: Detection of faulty raid card on the SVT host ( $($svthost.name) , opening of a support case... `n"  -ForegroundColor Red
+				}
+				if ($raidbatteryhwstate) {
+				Write-Host "Error Message: Detection of faulty raid card battery on the SVT host ( $($svthost.name) , opening of a support case... `n"  -ForegroundColor Red
+				}
+				if ($cpuusage) {
+				Write-Host "Error Message: High CPU usage detected on the SVT host ( $($svthost.name) ... `n"  -ForegroundColor yellow
+				}
+				if ($memusage) {
+				Write-Host "Error Message: High Memory usage detected on the SVT host ( $($svthost.name) ... `n"  -ForegroundColor yellow
+				}
 			}	
 
 			Stop-Transcript
