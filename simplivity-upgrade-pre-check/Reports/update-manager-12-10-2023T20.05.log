@@ -1,0 +1,59 @@
+**********************
+Windows PowerShell transcript start
+Start time: 20231210200536
+Username: ****
+RunAs User: ****
+Configuration Name: 
+Machine: test (Microsoft Windows NT 10.0.20348.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+Process ID: 14096
+PSVersion: 5.1.20348.558
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.20348.558
+BuildVersion: 10.0.20348.558
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Transcript started, output file is .\Reports\update-manager-12-10-2023T20.05.log
+
+#################################################################################################
+#        HPE Update Manager Host Update-Manager System Requirements Check Report
+#################################################################################################
+
+Report Creation Date: Sunday 10/12/2023 20:05
+Customer Name:        Emre Baykal
+Customer E-Mail:      emre.baykal@hpe.com
+Company Name:         HPE
+
+### Operating System Information ###
+
+Status OSHostName Caption                                           BuildNumber TotalCPUCores MemoryGB
+------ ---------- -------                                           ----------- ------------- --------
+OK     ********   Microsoft Windows Server 2022 Standard Evaluation 20348                   2       16
+
+
+Message: Supported Operating System Resources & Version found..
+
+### Installed Java Information ###
+
+InstalledJava              Version    Vendor
+-------------              -------    ------
+Java 8 Update 301 (64-bit) 8.0.3010.9 Oracle Corporation
+
+
+Message: Supported Java version found..
+
+### Installed Microsoft .NET Framework Information ###
+
+InstalledAspNet                                      Version      Vendor
+---------------                                      -------      ------
+Microsoft ASP.NET Core 6.0.12 Shared Framework (x64) 6.0.12.22571 Microsoft Corporation
+
+
+Message: Supported Microsoft .NET Framework version found..
+**********************
+Windows PowerShell transcript end
+End time: 20231210200649
+**********************
