@@ -47,4 +47,8 @@ Ensure the `iLOInput.csv` file is present in the script folder with the necessar
 
 This script is provided as-is, and users should ensure they understand its operations before executing it in a production environment. Hewlett Packard Enterprise holds no responsibility for any unintended outcomes resulting from the use of this script.
 
+## License
+
+This script is licensed under the [Apache 2.0](LICENSE).
+
 
