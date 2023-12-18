@@ -207,56 +207,73 @@ function Get-SVT-Cluster {
 			$ErrorActionPreference = "SilentlyContinue"
 			$WarningPreference ="SilentlyContinue"
 			
-			#Login Vmware VCenter
-			Write-Output "`nTrying to establish connection to the Vmware Virtual Center Server:"
-			$VCenter_Connection = Connect-VIServer -Server $vCenterServer -Protocol https -Credential $Cred -Force
-			$Error.Clear()
-			if($VCenter_Connection -ne $null)
-			{
-			   Write-Host "Connection established to target VCenter $($vCenterServer)`n" -ForegroundColor Green
-					
-			 } else {
-				 Write-Host "Connection could not be established to target VCenter $($vCenterServer) .`n" -ForegroundColor Red
-				  exit;
-			 }
+            #Login Vmware VCenter
+            try {
 
-			#Connect to the SimpliVity cluster
-			# Initialize an array to store the Omnistack Virtual HostsIP addresses
-			$OvcIpAddresses = @()
+			    Write-Output "`nTrying to establish connection to the Vmware Virtual Center Server:"
+			    $VMWareVcenter = Connect-VIServer -Server $vCenterServer -Protocol https -Credential $Cred -Force -ErrorAction Stop
 
-			$ovcvms = Get-VM | Where-Object { $_.Name -like "OmniStackVC*" }
+			    Write-Host "Connection established to target VCenter $($vCenterServer)`n" -ForegroundColor Green
 
-			Write-Host "Omnistack Virtual Controller List:"
-			foreach ($ovcvm in $ovcvms) {
-				$ovc = Get-VMGuest -VM $ovcvm
-				$ovcvmName = $ovcvm
-				$ovchostname = $ovc.HostName
-				$OvcMgmtIpAddress = $ovc.IPAddress | Select-Object -First 1
+            } catch {
 
-				Write-Host "OVC VM Name: $ovcvmName - Managemnt IP Addres: $OvcMgmtIpAddress" -ForegroundColor Yellow
-				
-				 # Add the IP address to the array
-				$OvcMgmtIpAddresses += $OvcMgmtIpAddress
-			}
+                Write-Host "Connection could not be established to target VCenter $($vCenterServer) .`n" -ForegroundColor Red
+				Break
 
-			# Attempt to access each OVC IP address in the array
-			foreach ($ipAddress in $OvcMgmtIpAddresses) {
-			$svt_connection = Connect-Svt -ovc $ipAddress -Credential $Cred
-			$Error.Clear()
+            }
+
 			
-			Write-Host "`nTrying to establish connection to the Omnistack Virtual Ceontroller:"
-			# If successfully accessed, break out of the loop
-			if ($svt_connection) {
-				Write-Host "Connection established to target OVC Host $ipAddress `n" -ForegroundColor Green
-				break
-			}
-			}
+            #Connect to the SimpliVity cluster
+			$ovcvms = Get-VM | Where-Object { $_.Name -like "OmniStackVC*" }
+            $OvcIpAddresses = @()
+            $ovcid = 1
+            $ovcIpMap = @{}
+			
+            # Display the names of array members with index numbers
+            Write-Host "Omnistack Virtual Controller List:  "
+            Write-Host "-----------------------------------  `n"
+		    foreach ($ovcvm in $ovcvms) {
+                $ovc = Get-VMGuest -VM $ovcvm
+                $ovcvmName = $ovcvm
+                $ovchostname = $ovc.HostName
+                $OvcIpAddress = $ovc.IPAddress | Select-Object -First 1
 
-			if($svt_connection -eq $null)
-			{
-			   Write-Host "`nConnection could not be established to target OVC Host.`n" -ForegroundColor Red
-			   exit;
-			 }
+                # Display VM Name and IP Address
+                Write-Host "ID: $ovcid - OVC VM Name: $ovcvmName - Management IP Address: $($OvcIpAddress)" -ForegroundColor Yellow
+
+                # Map the ID to the IP address and add it to the array
+                $ovcIpMap["$ovcid"] = $OvcIpAddress
+                $ovcid++
+            }
+            
+            do {
+                    # Prompt the user to select an IP address
+                    Write-Host "`nSelect an OVC IP Address by ID:"
+                    $selectedovcId = Read-Host "Enter the ID"
+                    $selectedovcIpAddress = $ovcIpMap[$selectedovcId]
+
+                    # Validate and assign the selected IP address
+                    if ($selectedovcIpAddress) {
+                        Write-Host "Selected OVC IP Address: $selectedovcIpAddress`n"
+                        break 
+                    } else {
+                        Write-Host "Invalid selection. Please try to select a valid ID !!! `n" -ForegroundColor Red
+                    }
+
+            } while ($true)
+
+             try {
+                 # Attempt to access each OVC IP address in the array
+                 Write-Host "Trying to establish connection to the Omnistack Virtual Controller: $($selectedovcIpAddress)"
+                 $svt_connection = Connect-Svt -ovc $selectedovcIpAddress -Credential $Cred -ErrorAction Stop
+
+                  Write-Host "Connection established to target OVC Host - $($selectedovcIpAddress) `n" -ForegroundColor Green
+             } catch {
+
+                  Write-Host "Connection could not be established to target OVC Host !!!`n" -ForegroundColor Red
+                  Break
+             }
+           
 			 
 			#######
 			# Get SVT Cluster Status
@@ -297,7 +314,6 @@ function Get-SVT-Cluster {
 					}
 				} while ($true)
 				
-				Clear-Host
 				
 				$CLSReportFile = "$($ReportDirPath)\$($clusterstate.omnistack_clusters[$ClusterId].name)-$($logtimestamp).log"
 
@@ -672,14 +688,14 @@ function Get-SVT-Cluster {
 				$sshfile = 'ls -pl /core/capture'
 				
 				# Attempt to access each OVC IP address in the array	
-				$null = New-SSHSession -ComputerName $ipAddress -port 22 -Credential $Cred -ErrorAction Stop
+				$null = New-SSHSession -ComputerName $selectedovcIpAddress -port 22 -Credential $Cred -ErrorAction Stop
 				
 				# Get all the SSH Sessions
 				$Session = Get-SSHsession
 
 				
 				if ($Session.SessionId -eq 0) {
-					Write-Host "SSH Connection established to target OVC Host $ipAddress `n" -ForegroundColor Green
+					Write-Host "SSH Connection established to target OVC Host $selectedovcIpAddress `n" -ForegroundColor Green
 					
 
 					try {
@@ -743,6 +759,7 @@ function Get-SVT-Cluster {
 					Write-Warning "Could not establish an SSH session to OVC Host $ipAddress `n" -ForegroundColor Red
 					
 				}	
+
 					
 			} else {
 				Write-Host "Message: Can Not Get SVT Cluster Informations !!! `n" -ForegroundColor Red
