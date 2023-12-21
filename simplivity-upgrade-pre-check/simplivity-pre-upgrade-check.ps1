@@ -851,10 +851,10 @@ function Invoke-SVT {
 			 
 			 # Capture Support Dump
 			 Write-Host "Running capture command on target virtual controller... `n"
-			 $null = Invoke-SSHcommand -SessionId $Session.SessionId -Command $sshcapture -TimeOut 10
+			 $null = Invoke-SSHcommand -SessionId $Session.SessionId -Command $sshcapture -TimeOut 300
  
 			 # Total wait time in seconds (10 minutes)
-			 $totalWaitTime = 600
+			 $totalWaitTime = 300
 			 $additionatime = 3
  
 			 for ($i = $totalWaitTime; $i -gt 0; $i--) {
@@ -886,7 +886,7 @@ function Invoke-SVT {
  
 						 } else {
  
-							 Write-Progress -Activity "Wait for $($i / 60) minutes capture to complete on $($Session.Host) .." -Status "Complete" -PercentComplete 100
+							 Write-Progress -Activity "Wait for capture to complete on $($Session.Host) .." -Status "Complete" -PercentComplete 100
 							 Start-Sleep 2
 							 $CaptureWeb = "http://$($Session.Host)/capture/$CaptureFile"
 							 Write-Host "`nDownloading the capture file: $CaptureWeb ..."
