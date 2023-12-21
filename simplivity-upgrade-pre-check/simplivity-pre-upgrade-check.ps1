@@ -40,6 +40,63 @@ function Invoke-SVT {
 	 #Reports Directory
 	 $global:ReportDirPath= ".\Reports"
  
+	 #Load HPESimpliVity , VMware.PowerCLI, Posh-SSH
+	 $InstalledModule = Get-Module
+	 $ModuleNames = $InstalledModule.Name
+ 
+	 if(-not($ModuleNames -like "HPESimpliVity") -or -not($ModuleNames -like "VMware.PowerCLI") -or -not($ModuleNames -like "Posh-SSH"))
+	 {
+		 Write-Host "Loading module :  HPESimpliVity ,VMware.PowerCLIs, Posh-SSH "
+		 Import-Module HPESimpliVity, VMware.PowerCLI, Posh-SSH
+		 if(($(Get-Module -Name "HPESimpliVity")  -eq $null))
+		 {
+			 Write-Host ""
+			 Write-Host "HPESimpliVity module cannot be loaded. Please fix the problem and try again"
+			 Write-Host ""
+			 Write-Host "Exit..."
+			 exit
+		 }
+ 
+		 if(($(Get-Module -Name "VMware.PowerCLI")  -eq $null))
+		 {
+			 Write-Host ""
+			 Write-Host "VMware.PowerCLI module cannot be loaded. Please fix the problem and try again"
+			 Write-Host ""
+			 Write-Host "Exit..."
+			 exit
+		 }
+		 
+		 if(($(Get-Module -Name "Posh-SSH")  -eq $null))
+		 {
+			 Write-Host ""
+			 Write-Host "Posh-SSH module cannot be loaded. Please fix the problem and try again"
+			 Write-Host ""
+			 Write-Host "Exit..."
+			 exit
+		 }
+		 
+	 }
+ 
+	 else
+	 {
+		 $InstalledSimplivityModule  =  Get-Module -Name "HPESimpliVity"
+		 $InstalledVmwareModule  =  Get-Module -Name "VMware.PowerCLI"
+		 $InstalledPoshSSHModule  =  Get-Module -Name "Posh-SSH"
+		 Write-Host "HPESimpliVity Module Version : $($InstalledSimplivityModule.Version) , VMware Module Version : $($InstalledVmwareModule.Version) , SSH Module Version: $($InstalledPoshSSHModule) installed on your machine."
+		 Write-host ""
+	 }
+ 
+	 $Error.Clear()
+ 
+ 
+	 if($Error.Count -ne 0)
+	 { 
+		 Write-Host "`nPlease launch the PowerShell in administrator mode and run the script again." -ForegroundColor Yellow 
+		 Write-Host "`n****** Script execution terminated ******" -ForegroundColor Red 
+		 exit 
+	 }	
+ 
+ 
 	 # Check if the credential file already exists
 	 if (-Not (Test-Path $InfraVariableFile)) {
 		 do {
@@ -145,67 +202,9 @@ function Invoke-SVT {
 	 #Log Timestamp
 	 $logtimestamp = get-date -UFormat "%m-%d-%YT%R" | ForEach-Object { $_ -replace ":", "." }
  
-	 #Load HPESimpliVity , VMware.PowerCLI, Posh-SSH
-	 $InstalledModule = Get-Module
-	 $ModuleNames = $InstalledModule.Name
- 
-	 if(-not($ModuleNames -like "HPESimpliVity") -or -not($ModuleNames -like "VMware.PowerCLI") -or -not($ModuleNames -like "Posh-SSH"))
-	 {
-		 Write-Host "Loading module :  HPESimpliVity ,VMware.PowerCLIs, Posh-SSH "
-		 Import-Module HPESimpliVity, VMware.PowerCLI, Posh-SSH
-		 if(($(Get-Module -Name "HPESimpliVity")  -eq $null))
-		 {
-			 Write-Host ""
-			 Write-Host "HPESimpliVity module cannot be loaded. Please fix the problem and try again"
-			 Write-Host ""
-			 Write-Host "Exit..."
-			 exit
-		 }
- 
-		 if(($(Get-Module -Name "VMware.PowerCLI")  -eq $null))
-		 {
-			 Write-Host ""
-			 Write-Host "VMware.PowerCLI module cannot be loaded. Please fix the problem and try again"
-			 Write-Host ""
-			 Write-Host "Exit..."
-			 exit
-		 }
-		 
-		 if(($(Get-Module -Name "Posh-SSH")  -eq $null))
-		 {
-			 Write-Host ""
-			 Write-Host "Posh-SSH module cannot be loaded. Please fix the problem and try again"
-			 Write-Host ""
-			 Write-Host "Exit..."
-			 exit
-		 }
-		 
-	 }
- 
-	 else
-	 {
-		 $InstalledSimplivityModule  =  Get-Module -Name "HPESimpliVity"
-		 $InstalledVmwareModule  =  Get-Module -Name "VMware.PowerCLI"
-		 $InstalledPoshSSHModule  =  Get-Module -Name "Posh-SSH"
-		 Write-Host "HPESimpliVity Module Version : $($InstalledSimplivityModule.Version) , VMware Module Version : $($InstalledVmwareModule.Version) , SSH Module Version: $($InstalledPoshSSHModule) installed on your machine."
-		 Write-host ""
-	 }
- 
-	 $Error.Clear()
- 
- 
-	 if($Error.Count -ne 0)
-	 { 
-		 Write-Host "`nPlease launch the PowerShell in administrator mode and run the script again." -ForegroundColor Yellow 
-		 Write-Host "`n****** Script execution terminated ******" -ForegroundColor Red 
-		 exit 
-	 }	
- 
-	 ## Authentication & Invoke Variables
- 
+	 ## Authentication & Variables & Installed Modules
 	 Invoke-SVT
 	 
-	 #
 	 
 	 try {
 	 #######	
@@ -263,7 +262,6 @@ function Invoke-SVT {
 				 } else {
 					 Write-Host "Invalid selection. Please try to select a valid ID !!! `n" -ForegroundColor Red
 				 }
- 
 			 } while ($true)
  
 			 #Connect to the SimpliVity cluster
@@ -606,7 +604,6 @@ function Invoke-SVT {
 					 $memusage = 1
 				 }
 				 
-				 #####
  
 				 Write-Host "`n# SVT Host $($svthost.name) Hardware State: `n"
 				 $hosthwinfo = Get-SvtHardware -Hostname $svthost.name -Raw | ConvertFrom-Json
@@ -717,99 +714,195 @@ function Invoke-SVT {
  
  function Get-SVT-Support-Dump {
  
-	 ## Authentication & Invoke Variables
-	 Invoke-SVT
+			 Write-Host "`n#################################################################################################"
+			 Write-Host "#                               Capture Support Dump                                            #"
+			 Write-Host "#################################################################################################`n"
+			 
+			 $sshcapture = 'source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-support-capture'
+			 $sshpurge = 'sudo find /core/capture/Capture*.tgz -maxdepth 1 -type f -exec rm -fv {} \;'
+			 $sshfile = 'ls -pl /core/capture'
  
-	 Write-Host "`n#################################################################################################"
-	 Write-Host "#                               Capture Support Dump                                            #"
-	 Write-Host "#################################################################################################`n"
+			 $ErrorActionPreference = "SilentlyContinue"
+			 $WarningPreference ="SilentlyContinue"
  
-	 $sshcapture = 'source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-support-capture'
-	 $sshpurge = 'sudo find /core/capture/Capture*.tgz -maxdepth 1 -type f -exec rm -fv {} \;'
-	 $sshfile = 'ls -pl /core/capture'
+			 ## Authentication & Variables & Installed Modules
+			 Invoke-SVT
  
-	 try {
-		 # Attempt to access  OVC IP address in the array    
-		 $null = New-SSHSession -ComputerName $selectedovcIpAddress -port 22 -Credential $Cred -ErrorAction Stop
-		 Write-Host "Connection established to target OVC Host - $($selectedovcIpAddress) `n" -ForegroundColor Green
-	 } catch {
+			 #Login Vmware VCenter
+			 try {
  
-		 Write-Host "Connection could not be established to target OVC Host - $($selectedovcIpAddress) !!!`n" -ForegroundColor Red
-		 Break
-	 }
+				 Write-Output "`nTrying to establish connection to the Vmware Virtual Center Server:"
+				 $VMWareVcenter = Connect-VIServer -Server $global:vCenterServer -Protocol https -Credential $global:Cred -Force -ErrorAction Stop
  
-	 # Get all the SSH Sessions
-	 $Session = Get-SSHsession
+				 Write-Host "Connection established to target VCenter $($global:vCenterServer)`n" -ForegroundColor Green
  
-	 try {
-		 Write-Host "Purging previous capture files... `n"
-		 $null = Invoke-SSHcommand -SessionId $Session.SessionId -Command $sshpurge -ErrorAction Stop
-	 }
-	 catch {
-		 Write-Warning "Could not purge old capture files on  virtual controller... `n"
-	 }
+			 } catch {
  
- 
-	 #######
- 
-	 # Capture Support Dump
-	 Write-Host "Running capture command on target virtual controller... `n"
-	 $null = Invoke-SSHcommand -SessionId $Session.SessionId -Command $sshcapture -TimeOut 10
- 
-	 # Total wait time in seconds (10 minutes)
-	 $totalWaitTime = 600
-	 $additionatime = 3
- 
-	 for ($i = $totalWaitTime; $i -gt 0; $i--) {
-			 # Remaining time in minutes and seconds
-			 $minutes = [math]::Floor($i / 60)
-			 $seconds = $i % 60
-		 
-			 # Display progress
-			 Write-Progress -Activity "Wait for capture to complete on $($Session.Host) .." -Status "$minutes minutes $seconds seconds remaining" -PercentComplete ((($totalWaitTime - $i) / $totalWaitTime) * 100)
- 
-			 # Wait for one second
-			 Start-Sleep -Seconds 1
- 
-			 if ($additionatime -eq 0)
-			 {
-				 Write-Warning "Could not download the support file !!!"
-				 Get-SSHSession | Remove-SSHSession | Out-Null
+				 Write-Host "Connection could not be established to target VCenter $($global:vCenterServer) .`n" -ForegroundColor Red
 				 Break
+ 
 			 }
  
-			 if ($i -le 5) {
-				 $Output = Invoke-SSHcommand -SessionId $Session.SessionId -Command $sshfile | Select-Object -ExpandProperty Output
-				 $CaptureFile = ($Output | Select-Object -last 1).Split(' ')[-1]
-				 # Check if the last object is a folder, if so wait.
-				 if (($CaptureFile[-1]) -eq '/') {
-					 $i = 300
-					 $additionatime--
-					 continue
+			 # List Vmware Clusters
  
+			 #Connect to the SimpliVity cluster
+			 $cluster_list = Get-Cluster -Server $global:vCenterServer
+			 $clustername = @()
+			 $clusterid = 1
+			 $CLSNameMap = @{}
+ 
+ 
+			 # Display the names of array members with index numbers
+			 Write-Host "VMware Environment Cluster List:  " -ForegroundColor Yellow
+			 Write-Host "-----------------------------------" -ForegroundColor Yellow
+			 foreach ($cluster in $cluster_list) {
+				 $clustername = $cluster.name
+ 
+				 # Display Cluster Name 
+				 Write-Host "ID: $clusterid - VMware Cluster Name: $clustername" -ForegroundColor Yellow
+ 
+				 # Map the ID to the IP address and add it to the array
+				 $CLSNameMap["$clusterid"] = $clustername
+				 $clusterid++
+			 }
+ 
+			 do {
+				 # Prompt the user to select Cluster
+				 Write-Host "`nSelect Cluster by ID:"
+				 $selectedclsId = Read-Host "Enter the ID"
+				 $selectedclsname = $CLSNameMap[$selectedclsId]
+ 
+				 # Validate and assign the selected IP address
+				 if ($selectedclsname) {
+					 Write-Host "Selected Cluster Name: $selectedclsname`n" -ForegroundColor Green
+					 break 
 				 } else {
+					 Write-Host "Invalid selection. Please try to select a valid ID !!! `n" -ForegroundColor Red
+				 }
+			 } while ($true)
  
-					 Write-Progress -Activity "Wait for $($i / 60) minutes capture to complete on $($Session.Host) .." -Status "Complete" -PercentComplete 100
-					 Start-Sleep 2
-					 $CaptureWeb = "http://$($Session.Host)/capture/$CaptureFile"
-					 Write-Host "`nDownloading the capture file: $CaptureWeb ..."
-					 Invoke-WebRequest -Uri $CaptureWeb -OutFile "$ReportDirPath\$CaptureFile"
+			 #Connect to the SimpliVity cluster
+			 $ovcvms = Get-VM -Location $selectedclsname | Where-Object { $_.Name -like "OmniStackVC*" }
+			 $OvcIpAddresses = @()
+			 $ovcid = 1
+			 $ovcIpMap = @{}
  
-					 # Disconnect All SSH Sessions
-					 Get-SSHSession | Remove-SSHSession | Out-Null
+			 # Display the names of array members with index numbers
+			 Write-Host "Omnistack Virtual Controller List:  "
+			 Write-Host "-----------------------------------  `n"
+			 foreach ($ovcvm in $ovcvms) {
+				 $ovc = Get-VMGuest -VM $ovcvm
+				 $ovcvmName = $ovcvm
+				 $ovchostname = $ovc.HostName
+				 $OvcIpAddress = $ovc.IPAddress | Select-Object -First 1
+ 
+				 # Display VM Name and IP Address
+				 Write-Host "ID: $ovcid - OVC VM Name: $ovcvmName - Management IP Address: $($OvcIpAddress)" -ForegroundColor Yellow
+ 
+				 # Map the ID to the IP address and add it to the array
+				 $ovcIpMap["$ovcid"] = $OvcIpAddress
+				 $ovcid++
+			 }
+ 
+			 if ($ovcid -ge 2 ){
+				 
+				 do {
+					 # Prompt the user to select an IP address
+					 Write-Host "`nSelect an OVC IP Address by ID:"
+					 $selectedovcId = Read-Host "Enter the ID"
+					 $selectedovcIpAddress = $ovcIpMap[$selectedovcId]
+ 
+					 # Validate and assign the selected IP address
+					 if ($selectedovcIpAddress) {
+						 Write-Host "Selected OVC IP Address: $selectedovcIpAddress`n"
+						 break 
+					 } else {
+						 Write-Host "Invalid selection. Please try to select a valid ID !!! `n" -ForegroundColor Red
+					 }
+ 
+				 } while ($true)
+ 
+				 try {
+					 # Attempt to access  OVC IP address in the array    
+					 $null = New-SSHSession -ComputerName $selectedovcIpAddress -port 22 -Credential $Cred -ErrorAction Stop
+					 Write-Host "Connection established to target OVC Host - $($selectedovcIpAddress) `n" -ForegroundColor Green
+				 } catch {
+				 
+					 Write-Host "Connection could not be established to target OVC Host - $($selectedovcIpAddress) !!!`n" -ForegroundColor Red
 					 Break
- 
 				 }
  
+			 } else {
+				 Write-Host "Message: Can Not Get OVC Informations Rleated Cluster, Re-Run Script Then Select Another Cluster !!! `n" -ForegroundColor Red
+				 Break
 			 }
 			 
+			 # Get all the SSH Sessions
+			 $Session = Get-SSHsession
 			 
+			 try {
+				 Write-Host "Purging previous capture files... `n"
+				 $null = Invoke-SSHcommand -SessionId $Session.SessionId -Command $sshpurge -ErrorAction Stop
+			 }
+			 catch {
+				 Write-Warning "Could not purge old capture files on  virtual controller... `n"
+			 }
+ 
+			 
+			 # Capture Support Dump
+			 Write-Host "Running capture command on target virtual controller... `n"
+			 $null = Invoke-SSHcommand -SessionId $Session.SessionId -Command $sshcapture -TimeOut 10
+ 
+			 # Total wait time in seconds (10 minutes)
+			 $totalWaitTime = 600
+			 $additionatime = 3
+ 
+			 for ($i = $totalWaitTime; $i -gt 0; $i--) {
+					 # Remaining time in minutes and seconds
+					 $minutes = [math]::Floor($i / 60)
+					 $seconds = $i % 60
 				 
-	 }
+					 # Display progress
+					 Write-Progress -Activity "Wait for capture to complete on $($Session.Host) .." -Status "$minutes minutes $seconds seconds remaining" -PercentComplete ((($totalWaitTime - $i) / $totalWaitTime) * 100)
  
+					 # Wait for one second
+					 Start-Sleep -Seconds 1
  
+					 if ($additionatime -eq 0)
+					 {
+						 Write-Warning "Could not download the support file !!!"
+						 Get-SSHSession | Remove-SSHSession | Out-Null
+						 Break
+					 }
  
- ############
+					 if ($i -le 5) {
+						 $Output = Invoke-SSHcommand -SessionId $Session.SessionId -Command $sshfile | Select-Object -ExpandProperty Output
+						 $CaptureFile = ($Output | Select-Object -last 1).Split(' ')[-1]
+						 # Check if the last object is a folder, if so wait.
+						 if (($CaptureFile[-1]) -eq '/') {
+							 $i = 300
+							 $additionatime--
+							 continue
+ 
+						 } else {
+ 
+							 Write-Progress -Activity "Wait for $($i / 60) minutes capture to complete on $($Session.Host) .." -Status "Complete" -PercentComplete 100
+							 Start-Sleep 2
+							 $CaptureWeb = "http://$($Session.Host)/capture/$CaptureFile"
+							 Write-Host "`nDownloading the capture file: $CaptureWeb ..."
+							 Invoke-WebRequest -Uri $CaptureWeb -OutFile "$ReportDirPath\$CaptureFile"
+ 
+							 # Disconnect All SSH Sessions
+							 Get-SSHSession | Remove-SSHSession | Out-Null
+							 Break
+ 
+						 }
+ 
+					 }
+					 
+					 
+						 
+			 }
  
  
  }
