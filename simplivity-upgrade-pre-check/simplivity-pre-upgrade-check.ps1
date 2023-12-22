@@ -768,7 +768,7 @@ function Invoke-SVT {
  
 			 do {
 				 # Prompt the user to select Cluster
-				 Write-Host "`nSelect Cluster by ID:"
+				 Write-Host "`nSelect Cluster by ID:" -ForegroundColor Green
 				 $selectedclsId = Read-Host "Enter the ID"
 				 $selectedclsname = $CLSNameMap[$selectedclsId]
  
@@ -809,7 +809,7 @@ function Invoke-SVT {
 				 do {
 					 # Prompt the user to select an IP address
 					 Write-Host "`nSelect an OVC IP Address by ID:" -ForegroundColor Yellow
-					 $selectedovcId = Read-Host "Enter the ID" -ForegroundColor Yellow
+					 $selectedovcId = Read-Host "Enter the ID" 
 					 $selectedovcIpAddress = $ovcIpMap[$selectedovcId]
  
 					 # Validate and assign the selected IP address
@@ -889,15 +889,22 @@ function Invoke-SVT {
  
 						 } else {
  
-							 Write-Progress -Activity "Wait for capture to complete on $($Session.Host) .." -Status "Complete" -PercentComplete 100
-							 Start-Sleep 2
-							 $CaptureWeb = "http://$selectedovcIpAddress/capture/$CaptureFile"
-							 Write-Host "Downloading the capture file: $CaptureWeb ..." -ForegroundColor Green
-							 Invoke-WebRequest -Uri $CaptureWeb -OutFile "$ReportDirPath\$CaptureFile"
+							 try {
  
-							 # Disconnect All SSH Sessions
-							 Get-SSHSession | Remove-SSHSession | Out-Null
-							 Break
+								 Write-Progress -Activity "Wait for capture to complete on $($Session.Host) try no: $try .." -Status "Complete" -PercentComplete 100
+								 Start-Sleep 2
+								 $CaptureWeb = "http://$selectedovcIpAddress/capture/$CaptureFile"
+								 Write-Host "Downloading the capture file: $CaptureWeb ..." -ForegroundColor Green
+								 Invoke-WebRequest -Uri $CaptureWeb -OutFile "$ReportDirPath\$CaptureFile"
+	 
+								 # Disconnect All SSH Sessions
+								 Get-SSHSession | Remove-SSHSession | Out-Null
+								 Break
+							 }
+							 catch {
+								 Write-Warning "Could not download the support file from $selectedovcIpAddress : $($_.Exception.Message)"
+								 Break	
+							 }
  
 						 }
  
