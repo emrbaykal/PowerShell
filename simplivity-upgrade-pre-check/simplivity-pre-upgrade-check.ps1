@@ -251,7 +251,7 @@ function Invoke-SVT {
  
 			 do {
 				 # Prompt the user to select Cluster
-				 Write-Host "`nSelect Cluster by ID:"
+				 Write-Host "`nSelect Cluster by ID:" -ForegroundColor Yellow
 				 $selectedclsId = Read-Host "Enter the ID"
 				 $selectedclsname = $CLSNameMap[$selectedclsId]
  
@@ -271,8 +271,8 @@ function Invoke-SVT {
 			 $ovcIpMap = @{}
  
 			 # Display the names of array members with index numbers
-			 Write-Host "Omnistack Virtual Controller List:  "
-			 Write-Host "-----------------------------------  `n"
+			 Write-Host "Omnistack Virtual Controller List:  " -ForegroundColor Yellow
+			 Write-Host "----------------------------------- " -ForegroundColor Yellow
 			 foreach ($ovcvm in $ovcvms) {
 				 $ovc = Get-VMGuest -VM $ovcvm
 				 $ovcvmName = $ovcvm
@@ -291,13 +291,13 @@ function Invoke-SVT {
 				 
 				 do {
 					 # Prompt the user to select an IP address
-					 Write-Host "`nSelect an OVC IP Address by ID:"
+					 Write-Host "`nSelect an OVC IP Address by ID:" -ForegroundColor Yellow
 					 $selectedovcId = Read-Host "Enter the ID"
 					 $selectedovcIpAddress = $ovcIpMap[$selectedovcId]
  
 					 # Validate and assign the selected IP address
 					 if ($selectedovcIpAddress) {
-						 Write-Host "Selected OVC IP Address: $selectedovcIpAddress`n"
+						 Write-Host "Selected OVC IP Address: $selectedovcIpAddress`n" -ForegroundColor Green
 						 break 
 					 } else {
 						 Write-Host "Invalid selection. Please try to select a valid ID !!! `n" -ForegroundColor Red
@@ -307,7 +307,7 @@ function Invoke-SVT {
  
 				 try {
 					 # Attempt to access each OVC IP address in the array
-					 Write-Host "Trying to establish connection to the Omnistack Virtual Controller: $($selectedovcIpAddress)"
+					 Write-Host "Trying to establish connection to the Omnistack Virtual Controller: $($selectedovcIpAddress)" -ForegroundColor Yellow
 					 $svt_connection = Connect-Svt -ovc $selectedovcIpAddress -Credential $global:Cred -ErrorAction Stop
  
 					 Write-Host "Connection established to target OVC Host - $($selectedovcIpAddress) `n" -ForegroundColor Green
@@ -335,16 +335,16 @@ function Invoke-SVT {
 			 # Start a transcript log
 			 Start-Transcript -Path $CLSReportFile 
 					 
-			 Write-Host "`n####################################################################"
-			 Write-Host "#     HPE Simplivity Cluster Pre-Upgrade Health Check Report         #"
-			 Write-Host "####################################################################`n"
+			 Write-Host "`n####################################################################" -ForegroundColor Yellow
+			 Write-Host "#     HPE Simplivity Cluster Pre-Upgrade Health Check Report       #" -ForegroundColor Yellow
+			 Write-Host "####################################################################`n" -ForegroundColor Yellow
  
 			 Write-Host "`nReport Creation Date: $($reportdate)" 
 			 Write-Host "Customer Name:        $($global:customername)" 	
 			 Write-Host "Customer E-Mail:      $($global:customermail)" 
 			 Write-Host "Company Name:         $($global:companyname)`n" 
 			 
-			 Write-Host "`n### VMWare Virtual Center  ###`n"
+			 Write-Host "`n### VMWare Virtual Center  ###" -ForegroundColor DarkGray
 			 # Get vCenter Server version
 			 $vCenterInfo = Get-ViServer $global:vcenterserver | Select-Object -Property Version, Build, Name
 			 
@@ -352,7 +352,7 @@ function Invoke-SVT {
 			 Write-Host "vCenter Server Version:       $($vCenterInfo.Version)"
 			 Write-Host "vCenter Server Build Number : $($vCenterInfo.Build)"
 			 
-			 Write-Host "`n### SVT Cluster State ###`n" 
+			 Write-Host "`n### SVT Cluster State ###" -ForegroundColor DarkGray
 			 # Get VMWare Cluster State
 			 $vmwarecluster = Get-Cluster -Name $clusterstate.omnistack_clusters[0].name
 			 
@@ -387,24 +387,24 @@ function Invoke-SVT {
 			 Write-Host "VMWare Total VM:                $($vmwarecluster.ExtensionData.Summary.UsageSummary.TotalVmCount)"
 			 Write-Host "VMWare PoweredOff VM:           $($vmwarecluster.ExtensionData.Summary.UsageSummary.PoweredOffVmCount)"
 					 
-			 Write-Host "`n### SVT Cluster Arbiter State ###`n"
+			 Write-Host "`n### SVT Cluster Arbiter State ###" -ForegroundColor DarkGray
 			 
 			 Write-Host "`nRequired Arbiter:                  $($clusterstate.omnistack_clusters[0].arbiter_required)"
 			 
 			 if ($clusterstate.omnistack_clusters[0].arbiter_required -eq 'true') {
 				 if ($clusterstate.omnistack_clusters[0].arbiter_configured -eq 'true') {
-						 Write-Host "Arbiter Configured ?:               $($clusterstate.omnistack_clusters[0].arbiter_configured)"
+						 Write-Host "Arbiter Configured  :               $($clusterstate.omnistack_clusters[0].arbiter_configured)"
 						 
 						 if ($clusterstate.omnistack_clusters[0].arbiter_connected -eq 'true') {
-								 Write-Host "Arbiter Conected ?:                 $($clusterstate.omnistack_clusters[0].arbiter_connected)"
-								 Write-Host "Arbiter Address ?:                  $($clusterstate.omnistack_clusters[0].arbiter_address)"
+								 Write-Host "Arbiter Conected :                 $($clusterstate.omnistack_clusters[0].arbiter_connected)"
+								 Write-Host "Arbiter Address  :                  $($clusterstate.omnistack_clusters[0].arbiter_address)"
 							 else {
-								 Write-Host "Arbiter Conected ?:                 $($clusterstate.omnistack_clusters[0].arbiter_connected)" -ForegroundColor Red
+								 Write-Host "Arbiter Conected  :                 $($clusterstate.omnistack_clusters[0].arbiter_connected)" -ForegroundColor Red
 								 $arbiterconnected = 1 
 							 }
 						 }
 				 } else {
-						 Write-Host "Arbiter Configured ?:                  $($clusterstate.omnistack_clusters[0].arbiter_configured)" -ForegroundColor Red
+						 Write-Host "Arbiter Configured  :                  $($clusterstate.omnistack_clusters[0].arbiter_configured)" -ForegroundColor Red
 						 $arbiterconfigured = 1
 				 }
 				 
@@ -415,10 +415,11 @@ function Invoke-SVT {
 			 $free_space = $($clusterstate.omnistack_clusters[0].free_space / 1TB).ToString("F2")
 			 $local_backup_space = $($clusterstate.omnistack_clusters[0].local_backup_capacity / 1TB).ToString("F2")
 			 $percentFree = $(($clusterstate.omnistack_clusters[0].free_space / $clusterstate.omnistack_clusters[0].allocated_capacity) * 100).ToString("F2")	
+			 $efficiency_ratio = $($clusterstate.omnistack_clusters[0].efficiency_ratio) 
  
 			 
-			 Write-Host "`n### SVT Cluster Storage State ###`n"
-			 Write-Host "`nHPE Simplivity Efficiency Ratio:   $($clusterstate.omnistack_clusters[0].efficiency_ratio)" 
+			 Write-Host "`n### SVT Cluster Storage State ###" -ForegroundColor DarkGray
+			 Write-Host "`nHPE Simplivity Efficiency Ratio:   $efficiency_ratio" 
 			 Write-Host "Pysical Space:                     $pysical_space TiB" 
 			 Write-Host "Used Space:                        $used_space TiB"
 			 Write-Host "Free Space:                        $free_space TiB"
@@ -432,7 +433,7 @@ function Invoke-SVT {
 			 
 			 
 			 # Get SVT Datastore Status
-			 Write-Host "`n### SVT Datastore List ###"
+			 Write-Host "`n### SVT Datastore List ###" -ForegroundColor DarkGray
 			 $DSDetailList = Get-SvtDatastore | Where-Object  ClusterName -eq $clusterstate.omnistack_clusters[0].name |  Select-Object DatastoreName, SizeGB, SingleReplica, ClusterName, Deleted, PolicyName
 			 $DatastoreTable = @()
  
@@ -450,7 +451,7 @@ function Invoke-SVT {
 			 # Display Detail of Datastore to the table
 			 $DatastoreTable | Format-Table -Property 'Datastore Name', 'Size GB', 'Cluster Name', 'Single Replica', 'Deleted', 'Backup Policy Name'
 			 
-			 Write-Host "`n### The Information Of Driven Virtual Machines ###"
+			 Write-Host "### The Information Of Driven Virtual Machines ###" -ForegroundColor DarkGray
 			 
 			 # Get Virtual Machine States
 			 $VMDetailList = Get-Cluster -Name $clusterstate.omnistack_clusters[0].name | Get-VM
@@ -473,14 +474,12 @@ function Invoke-SVT {
 			 # Display Detail of VM to the table
 			 $VMTable | Sort -Property 'VMHost', 'Power State', 'Memory (GB)' | Format-Table -Property 'VM Name', 'Power State', 'Overall Status', 'Config Status', 'CPU Count', 'Memory (GB)', 'Guest OS', 'VM Host' 
 			 
-			 Write-Host "`n### The Information Of VM Replicasets ###"
+			 Write-Host "`n### The Information Of VM Replicasets ###" -ForegroundColor DarkGray
 			 
 			 # Get VM Replicaset State 
 			 $vmreplicaset = Get-SVTvmReplicaSet -ClusterName $clusterstate.omnistack_clusters[0].name  | Select-Object  VmName, State,  HAStatus 
 			 $vmreplicasetdegreded = Get-SVTvmReplicaSet -ClusterName $clusterstate.omnistack_clusters[0].name | Where-Object  HAStatus -eq  DEGRADED   |  Select-Object  VmName, State,  HAstatus
 			 $vmreplicaset | Format-Table -AutoSize 
-				 
- 
  
 			 if ($upgradestate -eq $null -and $memberscount -eq $null -and $arbiterconfigured -eq $null -and $arbiterconnected -eq $null -and $storagefreestate -eq $null -and $vmreplicasetdegreded.Count -eq 0 -and $vmclsstate -eq $null) {
 					 Write-Host "`nMessage: The status of the cluster ($($clusterstate.omnistack_clusters[0].name)) is consistent and you can continue to upgrade .... `n" -ForegroundColor Green
@@ -510,16 +509,13 @@ function Invoke-SVT {
 				 Write-Host "`nError Message: There are some errors or warnings in the cluster, check cluster state... `n"  -ForegroundColor yellow
 				 }
 			 }	
-		 
 			 
-			 Write-Host "`n--- Host Requirements ---`n"
-			 
-			 Write-Host "`n#################################################################################################"
-			 Write-Host "#                  HPE Simplivity Hosts Pre-Upgrade Health Check Report                           "
-			 Write-Host "#################################################################################################`n"
+			 Write-Host "`n#################################################################################################" -ForegroundColor yellow
+			 Write-Host "#                  HPE Simplivity Hosts Pre-Upgrade Health Check Report                           " -ForegroundColor yellow
+			 Write-Host "#################################################################################################`n" -ForegroundColor yellow
 			 
 			 # Get SVT Host Status
-			 Write-Host "`n### SVT Host List ###"
+			 Write-Host "### SVT Host List ###" -ForegroundColor DarkGray
 			 $hostlist = Get-Cluster -Name $clusterstate.omnistack_clusters[0].name | Get-VMHost
 			 # Create a table to display svt host information
 			 $HostTable = @()
@@ -564,7 +560,7 @@ function Invoke-SVT {
 				 $percentCpu = $(($esxihost.CpuUsageMhz / $esxihost.CpuTotalMhz ) * 100).ToString("F0")
 				 $percentMem = $(($esxihost.MemoryUsageGB / $esxihost.MemoryTotalGB ) * 100).ToString("F0")		
 				 
-				 Write-Host "`n### SVT Host: $($svthost.name) ###`n"
+				 Write-Host "`n#### SVT Host: $($svthost.name) ####`n" -ForegroundColor yellow
 				 
 				 Write-Host "`nSVT Host Name:               $($svthost.name)"
 				 Write-Host "SVT Host IP:                 $($svthost.hypervisor_management_system)"
@@ -576,7 +572,7 @@ function Invoke-SVT {
 				 }	
 				 Write-Host "SVT Host Model:              $($svthost.model)"
 				 if ($svthost.version -eq $clusterstate.omnistack_clusters[0].version) {
-					 Write-Host "SVT Host Version:           $($svthost.version)"
+					 Write-Host "SVT Host Version:            $($svthost.version)"
 				 }else {
 					 Write-Host "SVT Host Version:            $($svthost.version)" -ForegroundColor Red
 					 $hostversion = 1
@@ -605,7 +601,7 @@ function Invoke-SVT {
 				 }
 				 
  
-				 Write-Host "`n# SVT Host $($svthost.name) Hardware State: `n"
+				 Write-Host "`n# SVT Host $($svthost.name) Hardware State  #" -ForegroundColor DarkGray
 				 $hosthwinfo = Get-SvtHardware -Hostname $svthost.name -Raw | ConvertFrom-Json
 				 
 				 Write-Host "`nModel Number:                $($hosthwinfo.host.model_number)"
@@ -646,7 +642,7 @@ function Invoke-SVT {
 					 }
 				 }
 				 
-				 Write-Host "`n# SVT Host $($svthost.name) Disk State:"
+				 Write-Host "`n# SVT Host $($svthost.name) Disk State #" -ForegroundColor DarkGray
 				 $diskTable | Format-Table -AutoSize
  
 			 
@@ -686,7 +682,7 @@ function Invoke-SVT {
 					 }
 				 }	
  
-				 Write-Host "---------------`n"
+				 Write-Host "`n"
 			 }
 			 
 			 Stop-Transcript
