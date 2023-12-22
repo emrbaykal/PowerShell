@@ -718,7 +718,7 @@ function Invoke-SVT {
 			 Write-Host "#                               Capture Support Dump                                            #"
 			 Write-Host "#################################################################################################`n"
 			 
-			 $sshcapture = 'source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-support-capture'
+			 $sshcapture = 'source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-support-capture > /dev/null 2>&1 &'
 			 $sshpurge = 'sudo find /core/capture/Capture*.tgz -maxdepth 1 -type f -exec rm -fv {} \;'
 			 $sshfile = 'ls -pl /core/capture'
  
@@ -788,8 +788,8 @@ function Invoke-SVT {
 			 $ovcIpMap = @{}
  
 			 # Display the names of array members with index numbers
-			 Write-Host "Omnistack Virtual Controller List:  "
-			 Write-Host "-----------------------------------  `n"
+			 Write-Host "Omnistack Virtual Controller List:  " -ForegroundColor Yellow
+			 Write-Host "-----------------------------------" -ForegroundColor Yellow
 			 foreach ($ovcvm in $ovcvms) {
 				 $ovc = Get-VMGuest -VM $ovcvm
 				 $ovcvmName = $ovcvm
@@ -808,13 +808,13 @@ function Invoke-SVT {
 				 
 				 do {
 					 # Prompt the user to select an IP address
-					 Write-Host "`nSelect an OVC IP Address by ID:"
-					 $selectedovcId = Read-Host "Enter the ID"
+					 Write-Host "`nSelect an OVC IP Address by ID:" -ForegroundColor Yellow
+					 $selectedovcId = Read-Host "Enter the ID" -ForegroundColor Yellow
 					 $selectedovcIpAddress = $ovcIpMap[$selectedovcId]
  
 					 # Validate and assign the selected IP address
 					 if ($selectedovcIpAddress) {
-						 Write-Host "Selected OVC IP Address: $selectedovcIpAddress`n"
+						 Write-Host "Selected OVC IP Address: $selectedovcIpAddress`n" -ForegroundColor Green
 						 break 
 					 } else {
 						 Write-Host "Invalid selection. Please try to select a valid ID !!! `n" -ForegroundColor Red
@@ -841,21 +841,23 @@ function Invoke-SVT {
 			 $Session = Get-SSHsession
 			 
 			 try {
-				 Write-Host "Purging previous capture files... `n"
+				 Write-Host "Purging previous capture files..."
 				 $null = Invoke-SSHcommand -SessionId $Session.SessionId -Command $sshpurge -ErrorAction Stop
 			 }
 			 catch {
-				 Write-Warning "Could not purge old capture files on  virtual controller... `n"
+				 Write-Warning "Could not find purge old capture files on  virtual controller..."
 			 }
  
 			 
 			 # Capture Support Dump
-			 Write-Host "Running capture command on target virtual controller... `n"
-			 $null = Invoke-SSHcommand -SessionId $Session.SessionId -Command $sshcapture -TimeOut 300
+			 Write-Host "Running capture command on target virtual controller..."
+			 $null = Invoke-SSHcommand -SessionId $Session.SessionId -Command $sshcapture -TimeOut 30
+			 Start-Sleep -Seconds 30
  
-			 # Total wait time in seconds (10 minutes)
+			 # Total wait time in seconds (5 minutes)
 			 $totalWaitTime = 300
-			 $additionatime = 3
+			 $additionatime = 4
+			 $try = 1
  
 			 for ($i = $totalWaitTime; $i -gt 0; $i--) {
 					 # Remaining time in minutes and seconds
@@ -863,14 +865,14 @@ function Invoke-SVT {
 					 $seconds = $i % 60
 				 
 					 # Display progress
-					 Write-Progress -Activity "Wait for capture to complete on $($Session.Host) .." -Status "$minutes minutes $seconds seconds remaining" -PercentComplete ((($totalWaitTime - $i) / $totalWaitTime) * 100)
+					 Write-Progress -Activity "Wait for capture to complete on $($Session.Host) try no: $try .." -Status "$minutes minutes $seconds seconds remaining" -PercentComplete ((($totalWaitTime - $i) / $totalWaitTime) * 100)
  
 					 # Wait for one second
 					 Start-Sleep -Seconds 1
  
 					 if ($additionatime -eq 0)
 					 {
-						 Write-Warning "Could not download the support file !!!"
+						 Write-Warning "Could not capture the support file properly !!!" -ForegroundColor Red
 						 Get-SSHSession | Remove-SSHSession | Out-Null
 						 Break
 					 }
@@ -882,14 +884,15 @@ function Invoke-SVT {
 						 if (($CaptureFile[-1]) -eq '/') {
 							 $i = 300
 							 $additionatime--
+							 $try++
 							 continue
  
 						 } else {
  
 							 Write-Progress -Activity "Wait for capture to complete on $($Session.Host) .." -Status "Complete" -PercentComplete 100
 							 Start-Sleep 2
-							 $CaptureWeb = "http://$($Session.Host)/capture/$CaptureFile"
-							 Write-Host "`nDownloading the capture file: $CaptureWeb ..."
+							 $CaptureWeb = "http://$selectedovcIpAddress/capture/$CaptureFile"
+							 Write-Host "Downloading the capture file: $CaptureWeb ..." -ForegroundColor Green
 							 Invoke-WebRequest -Uri $CaptureWeb -OutFile "$ReportDirPath\$CaptureFile"
  
 							 # Disconnect All SSH Sessions
