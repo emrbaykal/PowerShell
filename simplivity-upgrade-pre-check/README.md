@@ -43,6 +43,10 @@ AUTHOR  : Emre Baykal - HPE Services
      Get-SVT-Cluster
      ```
    - If prompted, provide necessary infrastructure and authentication details for environment.
+    - If you only want to capture Simplivity Support Dump , the following module will be called.
+     ```powershell
+     Get-SVT-Support-Dump
+     ``` 
    - If you only want to analyze the requirements on the host where the update manager will be run, the following module will be called.
      ```powershell
      Get-Update-Manager
