@@ -12,10 +12,10 @@
 .EXAMPLE
     PS C:\HPEiLOCmdlets\Samples\> .\simplivity-pre-upgrade-check.ps1
 	
-	This script does not take any parameter and gets the server information for the given target iLO's.
+    This script does not take any parameter and gets the server information for the given target iLO's.
     
 .INPUTS
-Customer Name & Surname ,Customer E-Mail, Company Name, VMWare VCenter Server(ip), VCenter Username & Password.   
+    Customer Name & Surname ,Customer E-Mail, Company Name, VMWare VCenter Server(ip), VCenter Username & Password.   
 
 .OUTPUTS
     None (by default)
