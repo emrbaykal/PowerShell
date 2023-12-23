@@ -43,7 +43,7 @@ AUTHOR  : Emre Baykal - HPE Services
      Get-SVT-Cluster
      ```
    - If prompted, provide necessary infrastructure and authentication details for environment.
-    - If you only want to capture Simplivity Support Dump , the following module will be called.
+   - If you only want to capture Simplivity Support Dump , the following module will be called.
      ```powershell
      Get-SVT-Support-Dump
      ``` 
