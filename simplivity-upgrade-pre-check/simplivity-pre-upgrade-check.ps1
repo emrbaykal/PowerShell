@@ -15,7 +15,7 @@
 	This script does not take any parameter and gets the server information for the given target iLO's.
     
 .INPUTS
-	Customer Name & Surname ,Customer E-Mail, Company Name, VMWare VCenter Server(ip), VCenter Username & Password.   
+Customer Name & Surname ,Customer E-Mail, Company Name, VMWare VCenter Server(ip), VCenter Username & Password.   
 
 .OUTPUTS
     None (by default)
@@ -26,7 +26,7 @@
     Company : Hewlett Packard Enterprise
     Version : 2.1.0.0
     Date    : 12/23/2023
-	AUTHOR  : Emre Baykal - HPE Services
+AUTHOR  : Emre Baykal - HPE Services
 #>
 
 function Invoke-SVT {
