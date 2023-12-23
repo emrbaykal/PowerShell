@@ -26,7 +26,7 @@ Customer Name & Surname ,Customer E-Mail, Company Name, VMWare VCenter Server(ip
     Company : Hewlett Packard Enterprise
     Version : 2.1.0.0
     Date    : 12/23/2023
-AUTHOR  : Emre Baykal - HPE Services
+    AUTHOR  : Emre Baykal - HPE Services
 #>
 
 function Invoke-SVT {
