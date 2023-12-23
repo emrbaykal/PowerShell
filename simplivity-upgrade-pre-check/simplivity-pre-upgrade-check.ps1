@@ -15,7 +15,7 @@
 	This script does not take any parameter and gets the server information for the given target iLO's.
     
 .INPUTS
-	iLOInput.csv file in the script folder location having iLO IPv4 or ilo5 address, iLO Username and iLO Password.
+	Customer Name & Surname ,Customer E-Mail, Company Name, VMWare VCenter Server(ip), VCenter Username & Password.   
 
 .OUTPUTS
     None (by default)
@@ -24,9 +24,9 @@
 	Always run the PowerShell in administrator mode to execute the script.
 	
     Company : Hewlett Packard Enterprise
-    Version : 3.0.0.0
-    Date    : 12/05/2023
-	AUTHOR  : Emre Baykal HPE Services
+    Version : 2.1.0.0
+    Date    : 12/23/2023
+	AUTHOR  : Emre Baykal - HPE Services
 #>
 
 function Invoke-SVT {
@@ -686,6 +686,69 @@ function Invoke-SVT {
 			 }
 			 
 			 Stop-Transcript
+ 
+			 Write-Host "`n#################################################################################################" -ForegroundColor yellow
+			 Write-Host "#                               Capture Balance File                                             #" -ForegroundColor yellow
+			 Write-Host "#################################################################################################`n" -ForegroundColor yellow
+ 
+			 $sshbalance = 'source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-balance-manual'
+			 $sshmovebalance = 'sudo find /tmp/balance/replica_distribution_file*.csv -maxdepth 1 -type f -exec cp {} /core/capture/  \;'
+			 $sshbalancefile = 'sudo find /core/capture/replica_distribution_file*.csv -maxdepth 1 -type f'
+ 
+			 try {
+				 # Attempt to access  OVC IP addres 
+				 Write-Host "Try to establish target OVC Host - $($selectedovcIpAddress)" -ForegroundColor Yellow  
+				 $null = New-SSHSession -ComputerName $selectedovcIpAddress -port 22 -Credential $global:Cred -ErrorAction Stop
+				 Write-Host "Connection established to target OVC Host - $($selectedovcIpAddress) `n" -ForegroundColor Green
+			 } catch {
+			 
+				 Write-Host "Connection could not be established to target OVC Host - $($selectedovcIpAddress) !!!`n" -ForegroundColor Red
+				 Break
+			 }
+			 
+			 # Get all the SSH Sessions
+			 $Session = Get-SSHsession
+ 
+			 try {
+				 # Capture Balance Report
+				 Write-Host "Running capture balance report command on target virtual controller..."
+				 $null = Invoke-SSHcommand -SessionId $Session.SessionId -Command $sshbalance -TimeOut 60  -ErrorAction Stop
+			 
+				 # Move Balance Report to /core/capture directory
+				 Write-Host "Move Balance Report to /core/capture directory... `n"
+				 $null = Invoke-SSHcommand -SessionId $Session.SessionId -Command $sshmovebalance -TimeOut 10 -ErrorAction Stop
+			 
+			 } catch {
+			 
+				 Write-Host "Capture balance report can not create on target virtual controller... !!!`n" -ForegroundColor Red
+				 Break
+			 }
+			 
+			 try {
+			 
+				 $balancefile = Invoke-SSHcommand -SessionId $Session.SessionId -Command $sshbalancefile | Select-Object -ExpandProperty Output 
+				 $CaptureBalanceFile = ($balancefile | Select-Object -last 1).Split('/')[-1]
+			 
+				 Start-Sleep 2
+				 $CaptureBalanceWeb = "http://$selectedovcIpAddress/capture/$CaptureBalanceFile"
+				 Write-Host "Downloading the Balance Report file: $CaptureBalanceWeb ..." -ForegroundColor Green
+				 Invoke-WebRequest -Uri $CaptureBalanceWeb -OutFile "$global:ReportDirPath\$CaptureBalanceFile"
+			 
+				 # Delete Balance Report File
+				 $null = Invoke-SSHcommand -SessionId $Session.SessionId -Command "sudo rm -f  $balancefile" -TimeOut 10 -ErrorAction Stop
+				  
+				 # Disconnect All SSH Sessions
+				 Get-SSHSession | Remove-SSHSession | Out-Null
+ 
+				 Write-Host "You Can Find SVT Balance Report Below: $global:ReportDirPath\$CaptureBalanceFile `n" -ForegroundColor yellow
+			 
+			 } catch {
+			 
+				 Write-Warning "Could not download the support file from $selectedovcIpAddress : $($_.Exception.Message)"
+				 Get-SSHSession | Remove-SSHSession | Out-Null
+			 
+			 }			
+ 
 		 }
 	 
 	 catch{}    
@@ -891,10 +954,12 @@ function Invoke-SVT {
 								 Start-Sleep 2
 								 $CaptureWeb = "http://$selectedovcIpAddress/capture/$CaptureFile"
 								 Write-Host "Downloading the capture file: $CaptureWeb ..." -ForegroundColor Green
-								 Invoke-WebRequest -Uri $CaptureWeb -OutFile "$ReportDirPath\$CaptureFile"
+								 Invoke-WebRequest -Uri $CaptureWeb -OutFile "$global:ReportDirPath\$CaptureFile"
 	 
 								 # Disconnect All SSH Sessions
 								 Get-SSHSession | Remove-SSHSession | Out-Null
+ 
+								 Write-Host "You Can Find SVT Support Dump Below: $global:ReportDirPath\$CaptureFile `n" -ForegroundColor yellow
 								 Break
 							 }
 							 catch {
