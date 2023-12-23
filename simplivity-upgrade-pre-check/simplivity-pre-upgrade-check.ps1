@@ -21,7 +21,7 @@
     None (by default)
 
 .NOTES
-	Always run the PowerShell in administrator mode to execute the script.
+    Always run the PowerShell in administrator mode to execute the script.
 	
     Company : Hewlett Packard Enterprise
     Version : 2.1.0.0
