@@ -12,21 +12,21 @@
 .EXAMPLE
     PS C:\HPEiLOCmdlets\Samples\> .\simplivity-pre-upgrade-check.ps1
 	
-    This script does not take any parameter and gets the server information for the given target iLO's.
+	This script does not take any parameter and gets the server information for the given target iLO's.
     
 .INPUTS
-    Customer Name & Surname ,Customer E-Mail, Company Name, VMWare VCenter Server(ip), VCenter Username & Password.   
+	Customer Name & Surname ,Customer E-Mail, Company Name, VMWare VCenter Server(ip), VCenter Username & Password.   
 
 .OUTPUTS
     None (by default)
 
 .NOTES
-    Always run the PowerShell in administrator mode to execute the script.
+	Always run the PowerShell in administrator mode to execute the script.
 	
     Company : Hewlett Packard Enterprise
     Version : 2.1.0.0
     Date    : 12/23/2023
-    AUTHOR  : Emre Baykal - HPE Services
+	AUTHOR  : Emre Baykal - HPE Services
 #>
 
 function Invoke-SVT {
@@ -204,8 +204,36 @@ function Invoke-SVT {
  
 	 ## Authentication & Variables & Installed Modules
 	 Invoke-SVT
-	 
-	 
+ 
+	 #Test Vmware Vcenter Connection
+	 #Test Vmware Vcenter Connection
+	 $portlist = @(
+		"22"
+		"443" 
+		"80"
+	 )
+	 $connectionstate = 0
+	 $ovcconnectionstate = 0 
+ 
+	 # Run the commands on all the SVAs together
+	 Write-Host "Executing TCP Ports Connection Tests (22/TCP, 443/TCP, 80/TCP) To The VMware VCenter..."  -ForegroundColor Yellow
+	
+	 foreach ($port in $portlist) {
+		 $connection = Test-NetConnection -Port $port $global:vCenterServer -InformationLevel Quiet
+ 
+			 if ($connection.TcpTestSucceeded -match 'False' ) {
+				 $connectionstate++ 
+			 } 
+	 }
+ 
+	 if ($connectionstate -ge '1') {
+		 Write-Host "`nMessage: VMware VCenter $($global:vCenterServer) Connection Test Failed, Check Firewall or Network Infrastructure !!! `n" -ForegroundColor Red
+		 Break
+	 } else {
+		 Write-Host "Message: VMware VCenter $($global:vCenterServer) Connection Test Success...`n" -ForegroundColor Green
+	 }
+ 
+ 
 	 try {
 	 #######	
 			 $ErrorActionPreference = "SilentlyContinue"
@@ -287,11 +315,11 @@ function Invoke-SVT {
 				 $ovcid++
 			 }
  
-			 if ($ovcid -ge 2 ){
-				 
+			 if ($ovcid -ge 2 )
+			 {
 				 do {
 					 # Prompt the user to select an IP address
-					 Write-Host "`nSelect an OVC IP Address by ID:" -ForegroundColor Yellow
+					 Write-Host "Select an OVC IP Address by ID:" -ForegroundColor Yellow
 					 $selectedovcId = Read-Host "Enter the ID"
 					 $selectedovcIpAddress = $ovcIpMap[$selectedovcId]
  
@@ -321,6 +349,8 @@ function Invoke-SVT {
 				 Write-Host "Message: Can Not Get OVC Informations Rleated Cluster, Re-Run Script Then Select Another Cluster !!! `n" -ForegroundColor Red
 				 Break
 			 }
+ 
+			 
 		
 			 # Get SVT Cluster Status
 			 $clusterstate = Get-SvtCluster -ClusterName $selectedclsname -Raw | ConvertFrom-Json
