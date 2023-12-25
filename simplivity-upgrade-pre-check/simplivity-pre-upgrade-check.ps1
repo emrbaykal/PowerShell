@@ -187,13 +187,6 @@ function Invoke-SVT {
 	 {
 		 Write-Host "Repors directory already exists! `n" -f Yellow
 	 }
- 
-	  #Test Vmware Vcenter Connection
-	  $portlist = @(
-		"22"
-		"443" 
-		"80"
-	 )
 
 
  }
