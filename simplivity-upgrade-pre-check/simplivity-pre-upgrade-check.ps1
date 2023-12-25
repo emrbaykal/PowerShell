@@ -113,7 +113,7 @@ function Invoke-SVT {
 		 
 		 Write-Host "`nPlease fill in the following information about infrastructure..." -ForegroundColor Yellow
 		 # Define Vmwre vCenter Server Information
-		 $global:vcenterserver  = Read-Host -Prompt 'VMWare VCenter Server(ip) '
+		 $global:vCenterServer  = Read-Host -Prompt 'VMWare VCenter Server(ip) '
  
 		 Write-Host "`nCheck the following entries..."
 		 Write-Host "Customer Name:                '$global:customername' "
@@ -125,17 +125,17 @@ function Invoke-SVT {
 		 $confirmation = Read-Host -Prompt "`nDo you confirm the entered information? (Y/N)"
   
 		 if ($confirmation -eq 'Y' -or $confirmation -eq 'y') {
-				 Write-Host "Information confirmed. Proceeding with the script..."
+				 Write-Host "Information confirmed. Proceeding with the script...`n"
 				 break  
 		 } else {
-				 Write-Host "Confirmation not received. Please fill in the information again."
+				 Write-Host "Confirmation not received. Please fill in the information again !!"
 		 
 		 }
 		 } while ($true)
 		 
 			 # Create a PowerShell custom object with the entered information
 			 $jsonData = [PSCustomObject]@{
-				 vCenterServer = $global:vcenterserver
+				 vCenterServer = $global:vCenterServer
 				 customername = $global:customername
 				 customermail = $global:customermail
 				 companyname = $global:companyname
@@ -151,13 +151,13 @@ function Invoke-SVT {
  
 	 } else {
 		 
-			 Write-Host "The Infrastructure Variable file $InfraVariableFile already exists. No action taken.`n" -ForegroundColor Green
+			 Write-Host "The Infrastructure Variable file $InfraVariableFile already exists. No action taken..." -ForegroundColor Green
 		 
 			 # Read the JSON content from the file
 			 $jsonInfraContent = Get-Content -Path $InfraVariableFile | Out-String | ConvertFrom-Json
  
 			 # Access the variables from the object
-			 $global:vcenterserver = $jsonInfraContent.vcenterserver
+			 $global:vCenterServer = $jsonInfraContent.vCenterServer
 			 $global:customername = $jsonInfraContent.customername
 			 $global:customermail = $jsonInfraContent.customermail
 			 $global:companyname = $jsonInfraContent.companyname
@@ -170,7 +170,7 @@ function Invoke-SVT {
 		 Write-Host "Credentials saved to $credFile."
 		 
 	 } else {
-		 Write-Host "The credential file $credFile already exists. No action taken.`n" -ForegroundColor Green
+		 Write-Host "The credential file $credFile already exists. No action taken..." -ForegroundColor Green
 	 }
  
 	 #Import Credential File
@@ -180,12 +180,12 @@ function Invoke-SVT {
 	 if(!(Test-Path -Path $global:ReportDirPath))
 	 {
 		 #powershell create reports directory
-		 New-Item -ItemType Directory -Path $global:ReportDirPath
-		 Write-Host "New reports directory created successfully !`n" -f Green
+		 $directory = New-Item -ItemType Directory -Path $global:ReportDirPath
+		 Write-Host "New reports directory $($directory) created successfully..." -f Green
 	 }
 	 else
 	 {
-		 Write-Host "Repors directory already exists! `n" -f Yellow
+		 Write-Host "Repors directory already exists..." -f Yellow
 	 }
 
 
@@ -226,14 +226,49 @@ function Invoke-SVT {
  
 			 }
  
-			 # List Vmware Clusters
- 
-			 #Connect to the SimpliVity cluster
+
+			 #Datacenter Variables
+			 $datacenter_list = Get-Datacenter -Server $global:vCenterServer
+			 $datacentername = @()
+			 $datacenterid = 1
+			 $DCNameMap = @{}
+			 
+			 #Cluster Variables
 			 $cluster_list = Get-Cluster -Server $global:vCenterServer
 			 $clustername = @()
 			 $clusterid = 1
 			 $CLSNameMap = @{}
  
+             # Display the names of array members with index numbers
+			 Write-Host "VMware Environment DataCenter List:  " -ForegroundColor Yellow
+			 Write-Host "-----------------------------------" -ForegroundColor Yellow
+			 foreach ($datacenter in $datacenter_list) {
+				 $datacentername = $datacenter.name
+ 
+				 # Display Datacenter Name 
+				 Write-Host "ID: $datacenterid - VMware DataCenter Name: $datacentername" -ForegroundColor Yellow
+ 
+
+				 $DCNameMap["$datacenterid"] = $datacentername
+				 $datacenterid++
+			 }
+ 
+			 do {
+				 # Prompt the user to select Datacenter
+				 Write-Host "`nSelect DataCenter by ID:" -ForegroundColor Yellow
+				 $selecteddcId = Read-Host "Enter the ID"
+				 $selecteddcname = $DCNameMap[$selecteddcId]
+ 
+
+				 if ($selecteddcname) {
+					 Write-Host "Selected DataCenter Name: $selecteddcname`n" -ForegroundColor Green
+					 break 
+				 } else {
+					 Write-Host "Invalid selection. Please try to select a valid ID !!! `n" -ForegroundColor Red
+				 }
+			 } while ($true)
+ 
+              
  
 			 # Display the names of array members with index numbers
 			 Write-Host "VMware Environment Cluster List:  " -ForegroundColor Yellow
@@ -304,6 +339,7 @@ function Invoke-SVT {
 					 }
  
 				 } while ($true)
+				 
  
 				 try {
 					 # Attempt to access each OVC IP address in the array
@@ -345,10 +381,10 @@ function Invoke-SVT {
 			 Write-Host "Customer Name:        $($global:customername)" 	
 			 Write-Host "Customer E-Mail:      $($global:customermail)" 
 			 Write-Host "Company Name:         $($global:companyname)`n" 
-			 
+			 $global:vCenterServer
 			 Write-Host "`n### VMWare Virtual Center  ###" -ForegroundColor DarkGray
 			 # Get vCenter Server version
-			 $vCenterInfo = Get-ViServer $global:vcenterserver | Select-Object -Property Version, Build, Name
+			 $vCenterInfo = Get-VIServer $global:vCenterServer -Credential $global:Cred | Select-Object -Property Version, Build, Name
 			 
 			 Write-Host "`nvCenter Server Name:          $($vCenterInfo.Name)"
 			 Write-Host "vCenter Server Version:       $($vCenterInfo.Version)"
@@ -400,17 +436,18 @@ function Invoke-SVT {
 						 if ($clusterstate.omnistack_clusters[0].arbiter_connected -eq 'true') {
 								 Write-Host "Arbiter Conected :                 $($clusterstate.omnistack_clusters[0].arbiter_connected)"
 								 Write-Host "Arbiter Address  :                  $($clusterstate.omnistack_clusters[0].arbiter_address)"
-							 else {
+							 }else {
 								 Write-Host "Arbiter Conected  :                 $($clusterstate.omnistack_clusters[0].arbiter_connected)" -ForegroundColor Red
 								 $arbiterconnected = 1 
 							 }
-						 }
+	             
 				 } else {
 						 Write-Host "Arbiter Configured  :                  $($clusterstate.omnistack_clusters[0].arbiter_configured)" -ForegroundColor Red
 						 $arbiterconfigured = 1
 				 }
 				 
 			 }
+	
 			 
 			 $pysical_space = $($clusterstate.omnistack_clusters[0].allocated_capacity / 1TB).ToString("F2")
 			 $used_space = $($clusterstate.omnistack_clusters[0].used_capacity / 1TB).ToString("F2")
@@ -693,10 +730,11 @@ function Invoke-SVT {
 			 Write-Host "#                               Capture Balance File                                             #" -ForegroundColor yellow
 			 Write-Host "#################################################################################################`n" -ForegroundColor yellow
  
-			 $sshbalance = 'source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-balance-manual'
+			 $sshbalance = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-balance-manual --datacenter $($selecteddcname) --cluster $($selectedclsname)"
 			 $sshmovebalance = 'sudo find /tmp/balance/replica_distribution_file*.csv -maxdepth 1 -type f -exec cp {} /core/capture/  \;'
 			 $sshbalancefile = 'sudo find /core/capture/replica_distribution_file*.csv -maxdepth 1 -type f'
  
+			$sshbalance
 			 try {
 				 # Attempt to access  OVC IP addres 
 				 Write-Host "Try to establish target OVC Host - $($selectedovcIpAddress)" -ForegroundColor Yellow  
