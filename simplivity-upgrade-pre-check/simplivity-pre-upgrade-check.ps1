@@ -219,7 +219,7 @@ function Invoke-SVT {
 	 Write-Host "Executing TCP Ports Connection Tests (22/TCP, 443/TCP, 80/TCP) To The VMware VCenter..."  -ForegroundColor Yellow
 	
 	 foreach ($port in $portlist) {
-		 $connection = Test-NetConnection -Port $port $global:vCenterServer -InformationLevel Quiet
+		 $connection = Test-NetConnection $global:vCenterServer -CommonTCPPort $port -InformationLevel Quiet
  
 			 if ($connection.TcpTestSucceeded -match 'False' ) {
 				 $connectionstate++ 
