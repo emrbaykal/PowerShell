@@ -188,6 +188,14 @@ function Invoke-SVT {
 		 Write-Host "Repors directory already exists! `n" -f Yellow
 	 }
  
+	  #Test Vmware Vcenter Connection
+	  $portlist = @(
+		"22"
+		"443" 
+		"80"
+	 )
+
+
  }
  
  function Get-SVT-Cluster {
@@ -204,35 +212,6 @@ function Invoke-SVT {
  
 	 ## Authentication & Variables & Installed Modules
 	 Invoke-SVT
- 
-	 #Test Vmware Vcenter Connection
-	 #Test Vmware Vcenter Connection
-	 $portlist = @(
-		"22"
-		"443" 
-		"80"
-	 )
-	 $connectionstate = 0
-	 $ovcconnectionstate = 0 
- 
-	 # Run the commands on all the SVAs together
-	 Write-Host "Executing TCP Ports Connection Tests (22/TCP, 443/TCP, 80/TCP) To The VMware VCenter..."  -ForegroundColor Yellow
-	
-	 foreach ($port in $portlist) {
-		 $connection = Test-NetConnection $global:vCenterServer -CommonTCPPort $port -InformationLevel Quiet
- 
-			 if ($connection.TcpTestSucceeded -match 'False' ) {
-				 $connectionstate++ 
-			 } 
-	 }
- 
-	 if ($connectionstate -ge '1') {
-		 Write-Host "`nMessage: VMware VCenter $($global:vCenterServer) Connection Test Failed, Check Firewall or Network Infrastructure !!! `n" -ForegroundColor Red
-		 Break
-	 } else {
-		 Write-Host "Message: VMware VCenter $($global:vCenterServer) Connection Test Success...`n" -ForegroundColor Green
-	 }
- 
  
 	 try {
 	 #######	
