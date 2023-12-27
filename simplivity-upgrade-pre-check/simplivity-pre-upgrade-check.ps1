@@ -154,7 +154,7 @@ function Invoke-SVT {
 			 Write-Host "The Infrastructure Variable file $InfraVariableFile already exists. No action taken..." -ForegroundColor Green
 		 
 			 # Read the JSON content from the file
-			 $jsonInfraContent = Get-Content -Path $InfraVariableFile | Out-String | ConvertFrom-Json
+			 $jsonInfraContent = Get-Content -Path $InfraVariableFile | Out-String | ConvertFrom-Json 
  
 			 # Access the variables from the object
 			 $global:vCenterServer = $jsonInfraContent.vCenterServer
@@ -361,7 +361,7 @@ function Invoke-SVT {
 			 
 		
 			 # Get SVT Cluster Status
-			 $clusterstate = Get-SvtCluster -ClusterName $selectedclsname -Raw | ConvertFrom-Json
+			 $clusterstate = Get-SvtCluster -ClusterName $selectedclsname -Raw | ConvertFrom-Json 
 			 $upgradestate = $null
 			 $memberscount = $null
 			 $arbiterconfigured = $null
@@ -381,7 +381,7 @@ function Invoke-SVT {
 			 Write-Host "Customer Name:        $($global:customername)" 	
 			 Write-Host "Customer E-Mail:      $($global:customermail)" 
 			 Write-Host "Company Name:         $($global:companyname)`n" 
-			 $global:vCenterServer
+
 			 Write-Host "`n### VMWare Virtual Center  ###" -ForegroundColor DarkGray
 			 # Get vCenter Server version
 			 $vCenterInfo = Get-VIServer $global:vCenterServer -Credential $global:Cred | Select-Object -Property Version, Build, Name
@@ -469,6 +469,33 @@ function Invoke-SVT {
 				 $storagefreestate = 1
 			 }
 			 Write-Host "Local Backup Capacity:             $local_backup_space TiB"
+
+			 $BackupPolicies  = Get-SvtPolicy -Raw | ConvertFrom-Json 
+
+			 # Create an empty array to store the rule data
+			 $BackupRulesTable = @()
+
+			 # Iterate over each policy and its rules
+			 foreach ($BackupPolicy in $BackupPolicies.policies) {
+				foreach ($rule in $BackupPolicy.rules) {
+					$BackupRuleData = New-Object PSObject -Property @{
+						"Policy Name" = $BackupPolicy.name 
+						"Rule Number" = $rule.number  
+						"Frequency - Hours" = ( $rule.frequency / 60 ) 
+						"Destination" = $rule.destination_name 
+						"Backup Days" = $rule.Days 
+						"Expiration Time - Day" = ( $rule.retention / 60 ) / 24
+						"External Store Name" = $rule.external.store.name 
+						
+					}
+					$BackupRulesTable += $BackupRuleData
+				}
+			 }
+
+			 Write-Host "`n### SVT Backup Policies ###" -ForegroundColor DarkGray
+			 $BackupRulesTable | Format-Table -Property 'Policy Name', 'Backup Days', 'Rule Number', 'Destination', 'External Store Name', 'Frequency - Hours', 'Expiration Time - Day'
+
+			 
 			 
 			 
 			 # Get SVT Datastore Status
@@ -581,7 +608,7 @@ function Invoke-SVT {
 			 $HostTable | Sort -Property 'CpuUsage %', 'MemoryUsage %' | Format-Table -Property 'Name', 'ConnectionState', 'PowerState', 'OverallStatus', 'RebootRequired', 'NumCpu', 'CpuUsage %', 'MemoryUsage %', 'Version' | Format-Table -AutoSize
 			 
 			 
-			 $hoststate = Get-SvtHost -ClusterName $clusterstate.omnistack_clusters[0].name -Raw | ConvertFrom-Json
+			 $hoststate = Get-SvtHost -ClusterName $clusterstate.omnistack_clusters[0].name -Raw | ConvertFrom-Json 
 			 
 			 foreach ($svthost in $hoststate.hosts) {
 				 $hostconnectivity = $null
@@ -641,7 +668,7 @@ function Invoke-SVT {
 				 
  
 				 Write-Host "`n# SVT Host $($svthost.name) Hardware State  #" -ForegroundColor DarkGray
-				 $hosthwinfo = Get-SvtHardware -Hostname $svthost.name -Raw | ConvertFrom-Json
+				 $hosthwinfo = Get-SvtHardware -Hostname $svthost.name -Raw | ConvertFrom-Json 
 				 
 				 Write-Host "`nModel Number:                $($hosthwinfo.host.model_number)"
 				 Write-Host "Serial Number:               $($hosthwinfo.host.serial_number)"
