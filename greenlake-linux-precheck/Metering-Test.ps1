@@ -75,16 +75,18 @@ catch
 }while ($true)		
  
  if ($authmethod -eq 'P' -or $authmethod -eq 'p') {
+	  
 	  $credential = Get-Credential -Message 'Enter Greenlake glmeter Credential' -Username 'glmeter' 
 	  
 
 } else {
   
-      $password = ConvertTo-SecureString 'x' -AsPlainText -Force
-      $credential = New-Object System.Management.Automation.PSCredential ('glmeter', $password)
-	  
-	  Write-Host "Copy the private key file to your working directory ($($scriptPath))" -ForegroundColor Yellow
+      $UserName = Read-Host -Prompt "Metering Tool Linux User Name"
+      Write-Host "Copy the private key file to your working directory ($($scriptPath))" -ForegroundColor Yellow
 	  $KeyFile = Read-Host -Prompt "Private Key File Name"
+	  
+      $password = ConvertTo-SecureString 'x' -AsPlainText -Force
+      $credential = New-Object System.Management.Automation.PSCredential ($UserName, $password)
 
 }
 
@@ -134,19 +136,19 @@ foreach($ip in $inputcsv.IP ){
 			$sysstatpackage =  Invoke-SSHcommand -SessionId $Session.SessionID -Command $sysstat -TimeOut 60  -ErrorAction Stop
 			
 			# Verify sysstat Service Running
-			$sysstatservice =  Invoke-SSHcommand -SessionId $Session.SessionID -Command $sysstatservice -TimeOut 60  -ErrorAction Stop
+			$sysstatservicechk =  Invoke-SSHcommand -SessionId $Session.SessionID -Command $sysstatservice -TimeOut 60  -ErrorAction Stop
 			
-			if ($sysstatservice.ExitStatus -eq 3){
+			if ($sysstatservicechk.ExitStatus -eq 3){
 				
 				$sysstatservicestate = "Inactive"
 			}
 			
-			if ($sysstatservice.ExitStatus -eq 0){
+			if ($sysstatservicechk.ExitStatus -eq 0){
 				
 				$sysstatservicestate = "Active"
 			}
 			
-			if ($sysstatservice.ExitStatus -eq 1){
+			if ($sysstatservicechk.ExitStatus -eq 1){
 				
 				$sysstatservicestate = "Service Not Installed"
 			}
