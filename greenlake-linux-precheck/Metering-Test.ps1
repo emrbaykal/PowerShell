@@ -13,6 +13,8 @@ $collectsar =  'sar -P ALL'
 $credFile = ".\cred.XML"
 # Define the path to the private key file
 $KeyFile = ".\private.key"
+# Define default user name
+$DefaultUserName = "glmeter"
 	 
 
 Write-Host "`n####################################################################"
@@ -106,7 +108,8 @@ do {
 		  Write-Host "Private SSH-Key File (private.key) found under the working director... " -ForegroundColor Green
 	  }
 	  
-	  $UserName = $(Write-Host "Metering Tool Linux User Name: " -NoNewline -ForegroundColor White; Read-Host -ErrorAction SilentlyContinue)
+	  $UserName = $(Write-Host "Metering Tool Linux User Name (default is glmeter): " -NoNewline -ForegroundColor White; Read-Host  -ErrorAction SilentlyContinue ) -f $DefaultUserName
+	  if (-not $UserName) { $UserName = $DefaultUserName }
       $password = ConvertTo-SecureString 'x' -AsPlainText -Force
       $Cred = New-Object System.Management.Automation.PSCredential ($UserName, $password)
 }
