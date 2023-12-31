@@ -5,17 +5,18 @@
 # Global Variables
 $scriptPath = split-path -parent $MyInvocation.MyCommand.Definition
 $POSH = "$($scriptPath)\Posh-SSH"
-$sshserial = 'sudo /usr/sbin/dmidecode -s system-serial-number'
-$sysstat = 'rpm -q sysstat'
-$sysstatservice = 'systemctl status sysstat'
-$collectsar =  'sar -P ALL'
 # Define the path to the credential file
 $credFile = ".\cred.XML"
 # Define the path to the private key file
 $KeyFile = ".\private.key"
 # Define default user name
 $DefaultUserName = "glmeter"
-	 
+#Reports Directory
+$ReportDirPath= ".\Reports"
+#Log Timestamp
+$logtimestamp = get-date -UFormat "%m-%d-%YT%R" | ForEach-Object { $_ -replace ":", "." }
+#Report File
+$CLSReportFile = "$($ReportDirPath)\$($logtimestamp).log"
 
 Write-Host "`n####################################################################"
 Write-Host "#         HPE Metering Tool Linux Systems Pre-Check Tool           #"
@@ -40,7 +41,6 @@ if(-not($ModuleNames -like "Posh-SSH")){
 }else{
 		 $InstalledPoshSSHModule  =  Get-Module -Name "Posh-SSH"
 		 Write-Host "SSH Module : $($InstalledPoshSSHModule) installed on your machine."
-		 Write-host ""
 }
  
 #Read Host IP Address From CSV File
@@ -69,6 +69,17 @@ catch
     Write-Host "iPInput.csv file import failed. Please check the file path of the iPInput.csv file and try again."
     Write-Host "iPInput.csv file path: $path"
     exit
+}
+
+#Create Report Directory
+if(!(Test-Path -Path $ReportDirPath))
+{
+	#powershell create reports directory
+	$directory = New-Item -ItemType Directory -Path $ReportDirPath
+	Write-Host "New reports directory $($directory) created successfully...`n" -f Green
+}else
+{
+	Write-Host "Repors directory already exists...`n" -f Yellow
 }
 
 #Chose Authentication Method
@@ -114,12 +125,14 @@ do {
       $Cred = New-Object System.Management.Automation.PSCredential ($UserName, $password)
 }
 
+Write-Host ""
+# Start a transcript log
+Start-Transcript -Path $CLSReportFile 
 $resultTable = @()
 
-
-Write-Host "`n------------------------------------------------"
-Write-Host "####          SSH Connection Test           ####"
-Write-Host "------------------------------------------------"
+Write-Host "`n----------------------------------------------------"
+Write-Host "####            SSH Connection Test             ####"
+Write-Host "----------------------------------------------------"  
 
 #Trying to check requirements tıo the each hosts
 foreach($ip in $inputcsv.IP ){
@@ -136,6 +149,11 @@ foreach($ip in $inputcsv.IP ){
 		} 
 			
         if ($SSHConnection.Connected) {
+			$sshserial = 'sudo /usr/sbin/dmidecode -s system-serial-number'
+			$sysstat = 'rpm -q sysstat'
+			$sysstatservice = 'systemctl status sysstat'
+			$collectsar =  'sar -P ALL'
+			
             Write-Host "SSH Connection established to $($ip)" -ForegroundColor Green
 			$Session = Get-SSHSession | Where-Object { $_.Host -like "$($ip)" } | Select-Object SessionId
             
@@ -203,4 +221,8 @@ Write-Host "------------------------------------------------"
 
 # Display the results in a table format
 $resultTable | Format-Table -AutoSize
+
+#Stop transcript log
+Stop-Transcript
+
 Get-SSHSession | Remove-SSHSession | Out-Null
