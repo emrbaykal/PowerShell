@@ -23,11 +23,6 @@ The HPE Metering Tool Pre-Check Script for Linux Systems is a PowerShell script 
 4. **Authentication Details**: If choosing username/password, the script will prompt to save credentials. For SSH key-based authentication, ensure the private key file is in the script directory.
 5. **Review Results**: After execution, the script will display a table summarizing the status of each server.
 
-## Important Variables
-- `$scriptPath`: The path of the script directory.
-- `$credFile`: The credential file for storing username/password.
-- `$KeyFile`: The private key file for SSH key-based authentication.
-
 ## Output
 The script generates a table with the following columns for each target server:
 - Host IP Address
@@ -36,6 +31,8 @@ The script generates a table with the following columns for each target server:
 - Sysstat Package State
 - Sysstat Service State
 - Sysstat Cron Entry State
+
+![Alt text](image.png)
 
 ## Notes
 - Ensure Posh-SSH module is available or accessible for the script.
