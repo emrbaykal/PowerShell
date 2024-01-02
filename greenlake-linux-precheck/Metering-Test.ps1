@@ -111,6 +111,14 @@ do {
   
       Write-Host "SSH Key-Based Method Choosed To Authenticate Host..."
 	  Write-Host "`nPlease Copy the SSH Private key file to working directory with the file name private.key - Working Directory: ($($scriptPath))" -ForegroundColor Yellow
+
+	  $UserName = $(Write-Host "Metering Tool Linux User Name (default is glmeter): " -NoNewline -ForegroundColor White; Read-Host  -ErrorAction SilentlyContinue ) -f $DefaultUserName
+	  
+	  if (-not $UserName) { $UserName = $DefaultUserName }
+      
+	  $password = ConvertTo-SecureString 'x' -AsPlainText -Force
+      $Cred = New-Object System.Management.Automation.PSCredential ($UserName, $password)
+
 	  if (-Not (Test-Path $KeyFile)){
 		  
 		  Write-Host "`nPrivate SSH-Key File did not found under the working directory ($($scriptPath)\private.key) !!!" -ForegroundColor Red
@@ -119,13 +127,11 @@ do {
 		  Write-Host "Private SSH-Key File (private.key) found under the working director... " -ForegroundColor Green
 	  }
 	  
-	  $UserName = $(Write-Host "Metering Tool Linux User Name (default is glmeter): " -NoNewline -ForegroundColor White; Read-Host  -ErrorAction SilentlyContinue ) -f $DefaultUserName
-	  if (-not $UserName) { $UserName = $DefaultUserName }
-      $password = ConvertTo-SecureString 'x' -AsPlainText -Force
-      $Cred = New-Object System.Management.Automation.PSCredential ($UserName, $password)
+	  
 }
 
 Write-Host ""
+
 # Start a transcript log
 Start-Transcript -Path $CLSReportFile 
 $resultTable = @()
@@ -224,5 +230,6 @@ $resultTable | Format-Table -AutoSize
 
 #Stop transcript log
 Stop-Transcript
+Write-Host ""
 
 Get-SSHSession | Remove-SSHSession | Out-Null
