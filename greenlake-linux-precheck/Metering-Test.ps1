@@ -18,6 +18,7 @@ $logtimestamp = get-date -UFormat "%m-%d-%YT%R" | ForEach-Object { $_ -replace "
 #Report File
 $CLSReportFile = "$($ReportDirPath)\$($logtimestamp).log"
 
+
 Write-Host "`n####################################################################"
 Write-Host "#         HPE Metering Tool Linux Systems Pre-Check Tool           #"
 Write-Host "####################################################################`n"
@@ -155,19 +156,28 @@ foreach($ip in $inputcsv.IP ){
 		} 
 			
         if ($SSHConnection.Connected) {
+			
+			$Date = Get-Date
+            $YesterDayDate = ($date.AddDays(-1)).ToString("dd")
 			$sshserial = 'sudo /usr/sbin/dmidecode -s system-serial-number'
+			$sshserialText = "cat /home/$($UserName)/serial.txt"
 			$sysstat = 'rpm -q sysstat'
 			$sysstatservice = 'systemctl status sysstat'
-			$collectsar =  'sar -P ALL'
-			
+			$sarcurrentday =  "sar -P ALL | grep 'Average.* all'"
+			$sarprevdate =  "/usr/bin/sar -P ALL -f /var/log/sa/sa$($YesterDayDate)  -s 00:00:00 | grep 'Average.* all'"
             Write-Host "SSH Connection established to $($ip)" -ForegroundColor Green
 			$Session = Get-SSHSession | Where-Object { $_.Host -like "$($ip)" } | Select-Object SessionId
             
 			# Capture Host Serial Number
 	        $SerialNumber = Invoke-SSHcommand -SessionId $Session.SessionID -Command $sshserial -TimeOut 60  -ErrorAction Stop
+			$SerialNumberText = Invoke-SSHcommand -SessionId $Session.SessionID -Command $sshserialText -TimeOut 60  -ErrorAction Stop
+			
 			if ($SerialNumber.ExitStatus -eq 0 ){
 			      $HostSerial = "$($SerialNumber.Output)"  
-			} else {
+			}elseif ($SerialNumberText.ExitStatus -eq 0) {
+				  $HostSerial = "$($SerialNumberText.Output)"
+			}
+			else {
 				  $HostSerial = "Serial Not Collected"
 			}
 			
@@ -185,14 +195,26 @@ foreach($ip in $inputcsv.IP ){
 				$sysstatservicestate = "Service Not Installed"
 			}
 			
-			# Verify Collect sar report
-			$sarreport =  Invoke-SSHcommand -SessionId $Session.SessionID -Command $collectsar -TimeOut 60  -ErrorAction Stop
+			# Verify Collect Previus Day sar report
+			$sarreportprevday =  Invoke-SSHcommand -SessionId $Session.SessionID -Command $sarprevdate -TimeOut 60  -ErrorAction Stop
 			
-			if ($sarreport.ExitStatus -eq 0 ){
-			      $sarreportstate = "Consistent"
+			if ($sarreportprevday.ExitStatus -eq 0 ){
+				  $sarreportprevdaysplit = $sarreportprevday.Output -split '\s+'
+			      $sarreportprevdaystate = $sarreportprevdaysplit[4]
 			} else {
-				  $sarreportstate = "Not Consistent"
+				  $sarreportprevdaystate = "SAR Report Not Collect"
 			}
+
+           
+			$sarreportcurrentday =  Invoke-SSHcommand -SessionId $Session.SessionID -Command  $sarcurrentday -TimeOut 60  -ErrorAction Stop
+			
+			if ($sarreportcurrentday.ExitStatus -eq 0 ){
+				  $sarreportcurrentdaysplit = $sarreportcurrentday.Output -split '\s+'
+			      $sarreportcurrentdaystate = $sarreportcurrentdaysplit[4]
+			} else {
+				  $sarreportcurrentdaystate = "SAR Report Not Collect"
+			}
+			
 			
             # Add success result to the table
             $result = [PSCustomObject]@{
@@ -200,10 +222,12 @@ foreach($ip in $inputcsv.IP ){
                 ' SSH Connection ' = "Connected"
 				'  Host Serial Number ' = $HostSerial
 				'     sysstat Package State     ' = "$($sysstatpackage.Output)"
-				' sysstat Service State ' = "$($sysstatservicestate)"
-				'  sysstat Cron Entry   ' = "$($sarreportstate)"
+				' sysstat Service ' = "$($sysstatservicestate)"
+				' SAR Prev. Day %system ' = "$($sarreportprevdaystate)"
+				' SAR Current Day %system ' = "$($sarreportcurrentdaystate)"
             }
             $resultTable += $result
+
         }
 		
     } catch {
@@ -214,8 +238,9 @@ foreach($ip in $inputcsv.IP ){
             ' SSH Connection ' = "Failed"
             '  Host Serial Number ' = "NULL"
             '     sysstat Package State     ' = "NULL"
-            ' sysstat Service State ' = "NULL"
-            '  sysstat Cron Entry   ' = "NULL"		
+            ' sysstat Service ' = "NULL"
+            ' SAR Prev. Day %system ' = "NULL"
+			' SAR Current Day %system ' = "NULL"
         }
         $resultTable += $result
     } 
