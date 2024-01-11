@@ -71,11 +71,11 @@ AUTHOR  : Emre Baykal - HPE Services
 6. **Screenshots**
    - Analysis on SimpliVity cluster and SVT hosts
 
-   ![Alt text](image.png)
+   ![Alt text](cluster.png)
 
    - Get Support Dump
 
-   ![Alt text](image-1.png)
+   ![Alt text](support.png)
 
 ## Notes
   
