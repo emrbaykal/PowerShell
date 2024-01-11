@@ -1,0 +1,190 @@
+**********************
+Windows PowerShell transcript start
+Start time: 20240111093034
+Username: HPETRLAB\emre.baykal
+RunAs User: HPETRLAB\emre.baykal
+Configuration Name: 
+Machine: VEEAMSRV (Microsoft Windows NT 10.0.20348.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+Process ID: 9548
+PSVersion: 5.1.20348.558
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.20348.558
+BuildVersion: 10.0.20348.558
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Transcript started, output file is .\Reports\ xxxxxxxx.hpetrlab.local-01-11-2024T09.29.log
+
+#### SVT Host: s xxxxxxxx.hpetrlab.local ####
+
+SVT Host Name:               xxxxxxxx.hpetrlab.local
+SVT Host IP:                 xxxxxxxx
+SVT Host State:              ALIVE
+SVT Shutdown State:          NONE
+SVT Host Model:              HPE SimpliVity 380 Series 4000
+SVT Host Version:            Release 4.2.0.97
+SVT Upgrade State:           SUCCESS
+SVT Host ESXI Image Version: 7.0.3
+SVT Host ESXI Build:         20842708
+SVT Host CPU Total MHz:      92180
+SVT Host CPU Usage :         14 %
+SVT Host Memory GB:          768
+SVT Host Memory Usage :      38 %
+
+# SVT Host simplivitynode01.hpetrlab.local Hardware State  #
+
+Model Number:                HPE SimpliVity 380 Series 4000
+Serial Number:                xxxxxxxx
+Firmware Revision:
+Hardware Status:             HEALTHY
+Raid Card Product Name:      HPE Smart Array P816i-a SR Gen10
+Raid Card Firmware Revision: 5.32-0
+Raid Card Status:            HEALTHY
+Raid Card Battery Status:    HEALTHY
+
+# SVT Host simplivitynode01.hpetrlab.local Disk State #
+
+SerialNumber Manufacturer ModelNumber   Health  RemainingLife CapacityTB Slot
+------------ ------------ -----------   ------  ------------- ---------- ----
+ xxxxxxxx       HPE        xxxxxxxx    HEALTHY            95        1.9    9
+ xxxxxxxx       HPE        xxxxxxxx    HEALTHY            95        1.9   10
+ xxxxxxxx       HPE        xxxxxxxx    HEALTHY            95        1.9   11
+ xxxxxxxx       HPE        xxxxxxxx    HEALTHY            95        1.9   12
+ xxxxxxxx       HPE        xxxxxxxx    HEALTHY            95        1.9   13
+ xxxxxxxx       HPE        xxxxxxxx    HEALTHY            95        1.9   14
+ xxxxxxxx       HPE        xxxxxxxx    HEALTHY            95        1.9   15
+ xxxxxxxx       HPE        xxxxxxxx    HEALTHY            95        1.9   16
+ xxxxxxxx       HPE        xxxxxxxx    HEALTHY            95        1.9   17
+
+
+
+# Omnistack Vrutal Controller OmniStackVC-10-254-254-8 Net State #
+
+Mgmt IP         Mgmt Net Mask   Mgmt MTU        Fed IP          Fed Net Mask    Fed MTU         Str IP          Str Net Mask    Str MTU
+--------------- --------------- --------------- --------------- --------------- --------------- --------------- --------------- ---------------
+ xxxxxxxx            xxxxxxxx   1500             xxxxxxxx          xxxxxxxx      9000             xxxxxxxx       xxxxxxxx   9000
+
+
+
+# Omnistack Vrutal Controller OmniStackVC-10-254-254-8 Network Interface State #
+Kernel Interface table
+Iface      MTU    RX-OK RX-ERR RX-DRP RX-OVR    TX-OK TX-ERR TX-DRP TX-OVR Flg
+eth0      1500 26406825      0    950 0      26523952      0      0      0 BMRU
+eth1      9000      877      0      0 0             1      0      0      0 BMRU
+eth2      9000 5496522018      0      0 0      4359758031      0      0      0 BMRU
+lo       65536 115441314      0      0 0      115441314      0      0      0 LRU
+
+# Omnistack Vrutal Controller OmniStackVC-10-254-254-8 Network Connectivity Test #
+.--------------------------------------------------------------------------------------------------------------------------------------------------------.
+| Net Test Results                                                                                                                                       |
++-----------------+---------+--------+--------------------------+--------------+--------------+-----------------+--------------------+------+------------+
+| Datacenter      | Cluster | Zone   | Host Name                | Interface    | IP           | CIDR            | Ping (ms)          | MTU  | Port 22122 |
++-----------------+---------+--------+--------------------------+--------------+--------------+-----------------+--------------------+------+------------+
+| HPETRLAB        | LAB-CLS | (none) | OmniStackVC- xxxxxxxx    | Mgmt IF      |  xxxxxxxx    |  xxxxxxxx       | Success (0.015 ms) | 1500 | Success    |
+|                 |         |        |                          | Fed IF       |  xxxxxxxx    |  xxxxxxxx       | Success (0.016 ms) | 9000 | Success    |
+|                 |         |        |                          | Stor IF      |  xxxxxxxx    |  xxxxxxxx       | Success (0.015 ms) | 9000 | N/A        |
+|                 |         |        |                          | ESXi Mgmt IF |  xxxxxxxx    | N/A             | Success (0.142 ms) | N/A  | N/A        |
+|                 |         |        |                          | ESXi Stor IF |  xxxxxxxx    | N/A             | Success (0.125 ms) | 9000 | N/A        |
++-----------------+---------+--------+--------------------------+--------------+--------------+-----------------+--------------------+------+------------+
+| Default Gateway |         |        |                          |              |  xxxxxxxx    |  xxxxxxxx       | Success (0.267 ms) | N/A  | N/A        |
+| Arbiter         |         |        |                          |              | 0.0.0.0      | N/A             | Success (0.013 ms) | N/A  | Failure    |
+'-----------------+---------+--------+--------------------------+--------------+--------------+-----------------+--------------------+------+------------'
+.----------------------.
+|    Sockets In Use    |
++--------------+-------+
+| Socket Types | Count |
++--------------+-------+
+|     Total    |     5 |
+|      TCP     |     0 |
+|      UDP     |     0 |
+|  CLOSE_WAIT  |     0 |
+| UNIDENTIFIED |     0 |
+'--------------+-------'
+.------------------------.
+| Duplicate IP Addresses |
++------------------------+
+|          None          |
+'------------------------'
+
+# Omnistack Vrutal Controller OmniStackVC-10-254-254-8 Host Status Of All Managed Services. #
+.-----------------------------------------------.
+| Managed Service Status                        |
++-------------------------------------+---------+
+| Name                                | Running |
++-------------------------------------+---------+
+| StartupShutdown                     | true    |
+| Control Plane Svc monitor DSV       | true    |
+| Management Interface Manager        | true    |
+| Federation Interface Manager        | true    |
+| Storage Interface Manager           | true    |
+| Prometheus HTTP Service             | true    |
+| Message Service                     | true    |
+| Federation Service                  | true    |
+| Group RPC Service                   | true    |
+| Analytics Service                   | true    |
+| PicoServiceProvider                 | true    |
+| Base Vault Cleanup Scheduler        | true    |
+| Configuration Database              | true    |
+| Failure Domain Service 2G           | true    |
+| Failure Domain Service 1G           | false   |
+| Cluster View Service                | true    |
+| Arbiter Discovery                   | true    |
+| Overlay                             | true    |
+| SessionManager                      | true    |
+| DemuxerCallbackImpl                 | true    |
+| Demuxer Manager                     | true    |
+| Hw Inventory Manager                | true    |
+| Dynamic Throttle Adjuster           | true    |
+| Resource Balancing Service          | true    |
+| Hive Manager                        | true    |
+| CPScheduler                         | true    |
+| Backup Service                      | true    |
+| Node Service                        | true    |
+| Backup Manager                      | true    |
+| Capacity Alarm Service              | true    |
+| SocketLeak Alarm Service            | true    |
+| Sqlite Memory Alarm Service         | true    |
+| Mount Service                       | true    |
+| File Restore Service                | true    |
+| FailureDomainViewManager            | true    |
+| ElectionService                     | true    |
+| Failure Domain Connectivity Checker | true    |
+| Shutdown Service                    | true    |
+| BroadcastTreeProvider               | true    |
+| UpgradePeerService                  | true    |
+| ConnectivityService                 | true    |
+| ConnectivityService                 | true    |
+| PrimaryViewService                  | true    |
+| LeaderDeterminationService          | true    |
+| Leader Determination Server         | true    |
+| Balancing Service                   | true    |
+| IP Failover Manager                 | true    |
+| VAAI Session Service                | true    |
+| VAAI Session Manager                | true    |
+| VAAI Clone Manager                  | true    |
+| Control Plane Virtual RPC Server    | true    |
+| Event Emitter Service               | true    |
+| Intelligent Workload Optimizer      | true    |
+| Hypervisor Sync Service             | true    |
+| SVT Eventmgr RPC Server             | true    |
+| Phone Home Monitor                  | true    |
+| Node Sync Scheduler                 | true    |
+| InfoSight                           | true    |
+| Cluster Group Management Service MF | true    |
+| CGMS RPC Server                     | true    |
+| Cluster Group Management Service    | true    |
+| CGPS                                | true    |
+| Task Manager Enabler                | true    |
+| Control Plane DSV                   | true    |
+| Control Plane RPC Server            | true    |
+| LastRunLevel                        | true    |
+'-------------------------------------+---------'
+
+Message: The status of the SVT Host (  xxxxxxxx.hpetrlab.local ) is consistent and you can continue to upgrade ....
+**********************
+Windows PowerShell transcript end
+End time: 20240111093039
+**********************

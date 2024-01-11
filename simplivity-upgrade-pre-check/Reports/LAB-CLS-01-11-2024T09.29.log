@@ -1,0 +1,140 @@
+**********************
+Windows PowerShell transcript start
+Start time: 20240111093027
+Username: HPETRLAB\emre.baykal
+RunAs User: HPETRLAB\emre.baykal
+Configuration Name: 
+Machine: VEEAMSRV (Microsoft Windows NT 10.0.20348.0)
+Host Application: C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe
+Process ID: 9548
+PSVersion: 5.1.20348.558
+PSEdition: Desktop
+PSCompatibleVersions: 1.0, 2.0, 3.0, 4.0, 5.0, 5.1.20348.558
+BuildVersion: 10.0.20348.558
+CLRVersion: 4.0.30319.42000
+WSManStackVersion: 3.0
+PSRemotingProtocolVersion: 2.3
+SerializationVersion: 1.1.0.1
+**********************
+Transcript started, output file is .\Reports\LAB-CLS-01-11-2024T09.29.log
+
+####################################################################
+#     HPE Simplivity Cluster Pre-Upgrade Health Check Report       #
+####################################################################
+
+Report Creation Date: Thursday 11/01/2024 09:29
+Customer Name:        Emre Baykal
+Customer E-Mail:      emre.baykal@hpe.com
+Company Name:         HPE
+
+### VMWare Virtual Center  ###
+
+vCenter Server Name:          xxxxxxxx.hpetrlab.local
+vCenter Server Version:       7.0.3
+vCenter Server Build Number : 20845200
+
+### SVT Cluster State ###
+
+Datacenter Name:                HPETRLAB
+Cluster Name:                   LAB-CLS
+Hypervisor Type:                VSPHERE
+Management System:              xxxxxxxx.hpetrlab.local
+SVT Cluster Members Count:      1
+SVT Current Running Version:    Release 4.2.0.97
+SVT Cluster Ver. Upgrade State: SUCCESS_COMMITTED
+SVT Time Zone:                  America/New_York
+VMWare CLs State:               HEALTHY
+VMWare CLs Num Hosts:           1
+VMWare Total VM:                30
+VMWare PoweredOff VM:           11
+
+### SVT Cluster Arbiter State ###
+
+Required Arbiter:                  False
+
+### SVT Cluster Storage State ###
+
+HPE Simplivity Efficiency Ratio:   2.4 : 1
+Pysical Space:                     9.92 TiB
+Used Space:                        0.73 TiB
+Free Space:                        9.19 TiB
+Percentage Free Capacity:          92.59 %
+Local Backup Capacity:             0.00 TiB
+
+### SVT Backup Policies ###
+
+Policy Name           Backup Days Rule Number Destination External Store Name Frequency - Hours Expiration Time - Day
+-----------           ----------- ----------- ----------- ------------------- ----------------- ---------------------
+Test                  All                   1 <local>                                         1                     1
+Test                  All                   0 <local>                                         1                     1
+Default Backup Policy All                   0 <local>                                        12                     1
+Default Backup Policy All                   1 <local>                                        24                     1
+
+
+
+### SVT Datastore List ###
+
+Datastore Name Size GB Cluster Name Single Replica Deleted Backup Policy Name
+-------------- ------- ------------ -------------- ------- ------------------
+TEMP-DS02      3,072   LAB-CLS               False   False Fixed Default Backup Policy
+TEMP-DS01      1,024   LAB-CLS                True   False Default Backup Policy
+
+
+### The Information Of Driven Virtual Machines ###
+
+VM Name                                   Power State Overall Status Config Status CPU Count Memory (GB) Guest OS                   VM Host
+-------                                   ----------- -------------- ------------- --------- ----------- --------                   -------
+xxxxxxxx                                   PoweredOff          green         green         2          16 windows2019srv_64Guest     xxxxxxxx.hpetrlab.local
+xxxxxxxx                                   PoweredOff          green         green        16          36 sles15_64Guest             xxxxxxxx.hpetrlab.local
+xxxxxxxx                                   PoweredOff          green         green        16          36 rhel8_64Guest              xxxxxxxx.hpetrlab.local
+xxxxxxxx                                   PoweredOff          green         green        16          36 rhel8_64Guest              xxxxxxxx.hpetrlab.local
+
+
+
+
+### The Information Of VM Replicasets ###
+
+VmName                                    State HAstatus
+------                                    ----- --------
+xxxxxxxx                                  ALIVE DEGRADED
+xxxxxxxx                                  ALIVE DEGRADED
+xxxxxxxx                                  ALIVE DEGRADED
+xxxxxxxx                                  ALIVE DEGRADED
+
+
+
+
+# Datacenter Resource Balancing State #
+.---------------------------------------------------------------------------------------------------------------------.
+| Recorded storage utilization for time period 2024-Jan-11 09:27:49 UTC to 2024-Jan-11 09:32:49 UTC                   |
+|                                                                                                                     |
+| Leader 10.254.254.8 (local), Last Updated 2023-Jul-01 13:44:55 UTC                                                  |
++----------------+--------------------------------------+------------------------------+------------------------------+
+|                |                                      |       Calculated Used        |   Estimated Remaining        |
+| OmniStack host |  Node GUID                           | Space  I/O (  Read / Write ) |      Space   I/O             |
++----------------+--------------------------------------+------------------------------+------------------------------+
+| xxxxxxxx       | 42207ca5-032d-881b-c530-69cad3af43ec |    7% 100% (  6000 /  4000 ) |     9.19TB (     0 /     0 ) |
+'----------------+--------------------------------------+------------------------------+------------------------------'
+
+# Datacenter Support Reg. State #
+.---------------------------------.
+| Support Configuration           |
++----------------------+----------+
+| Attribute            | Value    |
++----------------------+----------+
+| Datacenter:          | HPETRLAB |
+| Cluster:             | LAB-CLS  |
+| Telemetry:           | Enabled  |
+| Support Agent Type:  | HPE RDA  |
+| Support Agent:       | Disabled |
+| Heartbeat:           | Disabled |
+| AHS:                 | Disabled |
+'----------------------+----------'
+
+Message: SVT cluster (LAB-CLS) status is not consistent and should fix error states !!!
+
+Error Message: Some Of virtual machines HA NOT COMPLIANT !!!
+**********************
+Windows PowerShell transcript end
+End time: 20240111093033
+**********************
