@@ -68,6 +68,15 @@ AUTHOR  : Emre Baykal - HPE Services
    - Verify credential and server detail inputs.
    - Check for administrative privileges.
 
+6. **Screenshots**
+   - Analysis on SimpliVity cluster and SVT hosts
+
+   ![Alt text](image.png)
+
+   - Get Support Dump
+
+   ![Alt text](image-1.png)
+
 ## Notes
   
 - This script assumes connectivity to a VMware vCenter Server and proper authentication.
