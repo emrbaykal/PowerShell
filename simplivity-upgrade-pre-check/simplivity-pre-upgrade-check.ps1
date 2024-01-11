@@ -10,7 +10,7 @@
     This Script perform Pre-Upgrade Checks to the simplivity servers.
 	
 .EXAMPLE
-    PS C:\HPEiLOCmdlets\Samples\> .\simplivity-pre-upgrade-check.ps1
+    PS C:\HPEiLOCmdlets\Samples\> . .\simplivity-pre-upgrade-check.ps1
 	
 	This script does not take any parameter and gets the server information for the given target iLO's.
     
@@ -26,7 +26,7 @@
 	
     Company : Hewlett Packard Enterprise
     Version : 2.1.0.0
-    Date    : 12/23/2023
+    Date    : 01/11/2024
 	AUTHOR  : Emre Baykal - HPE Services
 #>
 
