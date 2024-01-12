@@ -403,6 +403,7 @@ function Invoke-SVT {
 			 $arbiterconnected = $null
 			 $storagefreestate = $null
 			 $vmclsstate = $null
+			 $SelectedOVCConnection = New-SSHSession -ComputerName $selectedovcIpAddress -port 22 -Credential $Cred -AcceptKey -ErrorAction Stop
 			 $CLSReportFile = "$($global:ReportDirPath)\$($clusterstate.omnistack_clusters[0].name)-$($logtimestamp).log"
  
 			 # Start a transcript log For Cluster State
@@ -421,47 +422,61 @@ function Invoke-SVT {
 			 # Get vCenter Server version
 			 $vCenterInfo = Get-VIServer $global:vCenterServer -Credential $global:Cred | Select-Object -Property Version, Build, Name
 			 
-			 Write-Host "`nvCenter Server Name:          $($vCenterInfo.Name)"
-			 Write-Host "vCenter Server Version:       $($vCenterInfo.Version)"
-			 Write-Host "vCenter Server Build Number : $($vCenterInfo.Build)"
+			 Write-Host "`nvCenter Server Name:             $($vCenterInfo.Name)"
+			 Write-Host "vCenter Server Version:          $($vCenterInfo.Version)"
+			 Write-Host "vCenter Server Build Number:     $($vCenterInfo.Build)"
 			 
 			 Write-Host "`n### SVT Cluster State ###" -ForegroundColor White
 			 
 			 # Get VMWare Cluster State
 			 $vmwarecluster = Get-Cluster -Name $clusterstate.omnistack_clusters[0].name
+			 # Get Vmware Cluster Avarage CPU Usage Realtime
+			 $clustercpuusage = $vmwarecluster  | Get-Stat -Stat "cpu.usage.average" -Realtime | Measure-Object -Property Value -Average
+			 # Get VMWare Cluster Avarage Memory Usage Realtime
+			 $clustermemusage = $vmwarecluster | Get-Stat -Stat "mem.usage.average" -Realtime | Measure-Object -Property Value -Average  
 			 
-			 Write-Host "`nDatacenter Name:                $($clusterstate.omnistack_clusters[0].hypervisor_object_parent_name)"
-			 Write-Host "Cluster Name:                   $($clusterstate.omnistack_clusters[0].name)"
-			 Write-Host "Hypervisor Type:                $($clusterstate.omnistack_clusters[0].hypervisor_type)"
-			 Write-Host "Management System:              $($clusterstate.omnistack_clusters[0].hypervisor_management_system_name)"	
+			 Write-Host "`nDatacenter Name:                  $($clusterstate.omnistack_clusters[0].hypervisor_object_parent_name)"
+			 Write-Host "Cluster Name:                     $($clusterstate.omnistack_clusters[0].name)"
+			 Write-Host "Hypervisor Type:                  $($clusterstate.omnistack_clusters[0].hypervisor_type)"
+			 Write-Host "Management System:                $($clusterstate.omnistack_clusters[0].hypervisor_management_system_name)"	
 			 
 			 if ($clusterstate.omnistack_clusters[0].members.Count -lt 16) {
-					 Write-Host "SVT Cluster Members Count:      $($clusterstate.omnistack_clusters[0].members.Count)"
+					 Write-Host "SVT Cluster Members Count:        $($clusterstate.omnistack_clusters[0].members.Count)"
 			 
 			 } else {
-					 Write-Host "SVT  Cluster Members Count:      $($clusterstate.omnistack_clusters[0].members.Count)" -ForegroundColor Red
+					 Write-Host "SVT  Cluster Members Count:        $($clusterstate.omnistack_clusters[0].members.Count)" -ForegroundColor Red
 					 $memberscount = 1
 			 }
-			 Write-Host "SVT Current Running Version:    $($clusterstate.omnistack_clusters[0].version)"
+			 Write-Host "SVT Current Running Version:      $($clusterstate.omnistack_clusters[0].version)"
 			 if ($clusterstate.omnistack_clusters[0].upgrade_state -eq 'SUCCESS_COMMITTED') {
-					 Write-Host "SVT Cluster Ver. Upgrade State: $($clusterstate.omnistack_clusters[0].upgrade_state)"
+					 Write-Host "SVT Cluster Ver. Upgrade State:   $($clusterstate.omnistack_clusters[0].upgrade_state)"
 			 
 			 } else {
-					 Write-Host "SVT Cluster Ver. Upgrade State: $($clusterstate.omnistack_clusters[0].upgrade_state)" -ForegroundColor Red
+					 Write-Host "SVT Cluster Ver. Upgrade State:   $($clusterstate.omnistack_clusters[0].upgrade_state)" -ForegroundColor Red
 					 $upgradestate = 1
 			 }				 
-			 Write-Host "SVT Time Zone:                  $($clusterstate.omnistack_clusters[0].time_zone)"
+			 Write-Host "SVT Time Zone:                    $($clusterstate.omnistack_clusters[0].time_zone)"
 			 if ($vmwarecluster.ExtensionData.Summary.OverallStatus -eq 'green') {
-				 Write-Host "VMWare CLs State:               HEALTHY"
+				 Write-Host "VMWare CLs State:                 HEALTHY"
 			 }else {
-				 Write-Host "VMWare CLs State:               WARRING" -ForegroundColor yellow
+				 Write-Host "VMWare CLs State:                 WARRING" -ForegroundColor yellow
 				 $vmclsstate = 1
 			 }				
-			 Write-Host "VMWare CLs Num Hosts:           $($vmwarecluster.ExtensionData.Summary.NumHosts)"
-			 Write-Host "VMWare Total VM:                $($vmwarecluster.ExtensionData.Summary.UsageSummary.TotalVmCount)"
-			 Write-Host "VMWare PoweredOff VM:           $($vmwarecluster.ExtensionData.Summary.UsageSummary.PoweredOffVmCount)"
+			 Write-Host "VMWare CLs Num Hosts:             $($vmwarecluster.ExtensionData.Summary.NumHosts)"
+			 if ($clustercpuusage.Average -gt 80) {
+			     Write-Host "VMWare CLs Average CPU Usage:     $($clustercpuusage.Average.ToString("F2")) %" -ForegroundColor Yellow
+			 } else {
+                 Write-Host "VMWare CLs Average CPU Usage:     $($clustercpuusage.Average.ToString("F2")) %"
+             }
+              if ($clustermemusage.Average -gt 80) {			 
+			     Write-Host "VMWare CLs Average Memory Usage:  $($clustermemusage.Average.ToString("F2")) %" -ForegroundColor Yellow
+			 } else {
+				  Write-Host "VMWare CLs Average Memory Usage:  $($clustermemusage.Average.ToString("F2")) %"
+			 }
+			 Write-Host "VMWare CLs Total VM:              $($vmwarecluster.ExtensionData.Summary.UsageSummary.TotalVmCount)"
+			 Write-Host "VMWare CLs PoweredOff VM:         $($vmwarecluster.ExtensionData.Summary.UsageSummary.PoweredOffVmCount)"
 					 
-			 Write-Host "`n### SVT Cluster Arbiter State ###" -ForegroundColor White
+			 Write-Host "`n### Cluster Arbiter State ###" -ForegroundColor White
 			 
 			 Write-Host "`nRequired Arbiter:                  $($clusterstate.omnistack_clusters[0].arbiter_required)"
 			 
@@ -493,7 +508,7 @@ function Invoke-SVT {
 			 $efficiency_ratio = $($clusterstate.omnistack_clusters[0].efficiency_ratio) 
  
 			 
-			 Write-Host "`n### SVT Cluster Storage State ###" -ForegroundColor White
+			 Write-Host "`n### Cluster Storage State ###" -ForegroundColor White
 			 Write-Host "`nHPE Simplivity Efficiency Ratio:   $efficiency_ratio" 
 			 Write-Host "Pysical Space:                     $pysical_space TiB" 
 			 Write-Host "Used Space:                        $used_space TiB"
@@ -506,8 +521,66 @@ function Invoke-SVT {
 			 }
 			 Write-Host "Local Backup Capacity:             $local_backup_space TiB"
 
-			 $BackupPolicies  = Get-SvtPolicy -Raw | ConvertFrom-Json 
+             # Get SVT Host Status
+			 Write-Host "`n### Simplivity Host List ###" -ForegroundColor White
+			 $hostlist = Get-Cluster -Name $clusterstate.omnistack_clusters[0].name | Get-VMHost
+			 # Create a table to display svt host information
+			 $HostTable = @()
+ 
+			 foreach ($HostDetail in $hostlist) {
+					 $EsxiPercentCpu = $(($HostDetail.CpuUsageMhz / $HostDetail.CpuTotalMhz ) * 100).ToString("F0")
+					 $EsxiPercentMem = $(($HostDetail.MemoryUsageGB / $HostDetail.MemoryTotalGB ) * 100).ToString("F0")
+						 
+					 $HostInfo = New-Object PSObject -Property @{
+							 'Name' = $HostDetail.ExtensionData.Name
+							 'ConnectionState' = $HostDetail.ConnectionState
+							 'PowerState' = $HostDetail.PowerState
+							 'OverallStatus' = $HostDetail.ExtensionData.Summary.OverallStatus
+							 'RebootRequired' = $HostDetail.ExtensionData.Summary.RebootRequired
+							 'NumCpu' = $HostDetail.NumCpu
+							 'CpuUsage %' = $EsxiPercentCpu
+							 'MemoryUsage %' = $EsxiPercentMem
+							 'Version' = $HostDetail.Version
+					 }
+					 $HostTable += $HostInfo
+			 }
+ 
+			 # Display Detail of SVT Host to the table
+			 $HostTable | Sort -Property 'CpuUsage %', 'MemoryUsage %' | Format-Table -Property 'Name', 'ConnectionState', 'PowerState', 'OverallStatus', 'RebootRequired', 'NumCpu', 'CpuUsage %', 'MemoryUsage %', 'Version' | Format-Table -AutoSize
+			 
+			 Write-Host "# Datacenter Resource Balancing State #`n" -ForegroundColor White
+			 if ($SelectedOVCConnection.Connected) {
+				   $SelectedOVCSession = Get-SSHSession | Where-Object { $_.Host -like "$($selectedovcIpAddress)" } | Select-Object SessionId  
+				   $SvtBalanceCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-balance-show --shownodeip"
+				
+				   # Display Datacenter Balance State
+				   $SvtBalance = Invoke-SSHcommand -SessionId $SelectedOVCSession.SessionID -Command $SvtBalanceCmd -TimeOut 60
+				   $SvtBalance.Output
+				  
+	         }
+			 
+			 
+             # Get SVT Datastore Status
+			 Write-Host "`n### Datastore List ###" -ForegroundColor White
+			 $DSDetailList = Get-SvtDatastore | Where-Object  ClusterName -eq $clusterstate.omnistack_clusters[0].name |  Select-Object DatastoreName, SizeGB, SingleReplica, ClusterName, Deleted, PolicyName
+			 $DatastoreTable = @()
+ 
+			 foreach ($DSDetail in $DSDetailList) {
+				 $dsInfo = New-Object PSObject -Property @{
+					 'Datastore Name' = $DSDetail.DatastoreName
+					 'Size GB' = $DSDetail.SizeGB
+					 'Cluster Name' = $DSDetail.ClusterName
+					 'Single Replica' = $DSDetail.SingleReplica
+					 'Deleted' = $DSDetail.Deleted
+					 'Backup Policy Name' = $DSDetail.PolicyName
+				 }
+				 $DatastoreTable += $dsInfo
+			 }
+			 # Display Detail of Datastore to the table
+			 $DatastoreTable | Format-Table -Property 'Datastore Name', 'Size GB', 'Cluster Name', 'Single Replica', 'Deleted', 'Backup Policy Name'
 
+
+			 $BackupPolicies  = Get-SvtPolicy -Raw | ConvertFrom-Json
 			 # Create an empty array to store the rule data
 			 $BackupRulesTable = @()
 
@@ -527,29 +600,10 @@ function Invoke-SVT {
 					$BackupRulesTable += $BackupRuleData
 				}
 			 }
-
-			 Write-Host "`n### SVT Backup Policies ###" -ForegroundColor White
+			 
+			 Write-Host "### Backup Policies ###" -ForegroundColor White
 			 $BackupRulesTable | Format-Table -Property 'Policy Name', 'Backup Days', 'Rule Number', 'Destination', 'External Store Name', 'Frequency - Hours', 'Expiration Time - Day'
 
-			 
-			 # Get SVT Datastore Status
-			 Write-Host "`n### SVT Datastore List ###" -ForegroundColor White
-			 $DSDetailList = Get-SvtDatastore | Where-Object  ClusterName -eq $clusterstate.omnistack_clusters[0].name |  Select-Object DatastoreName, SizeGB, SingleReplica, ClusterName, Deleted, PolicyName
-			 $DatastoreTable = @()
- 
-			 foreach ($DSDetail in $DSDetailList) {
-				 $dsInfo = New-Object PSObject -Property @{
-					 'Datastore Name' = $DSDetail.DatastoreName
-					 'Size GB' = $DSDetail.SizeGB
-					 'Cluster Name' = $DSDetail.ClusterName
-					 'Single Replica' = $DSDetail.SingleReplica
-					 'Deleted' = $DSDetail.Deleted
-					 'Backup Policy Name' = $DSDetail.PolicyName
-				 }
-				 $DatastoreTable += $dsInfo
-			 }
-			 # Display Detail of Datastore to the table
-			 $DatastoreTable | Format-Table -Property 'Datastore Name', 'Size GB', 'Cluster Name', 'Single Replica', 'Deleted', 'Backup Policy Name'
 			 
 			 Write-Host "### The Information Of Driven Virtual Machines ###" -ForegroundColor White
 			 
@@ -581,25 +635,18 @@ function Invoke-SVT {
 			 $vmreplicasetdegreded = Get-SVTvmReplicaSet -ClusterName $clusterstate.omnistack_clusters[0].name | Where-Object  HAStatus -eq  DEGRADED   |  Select-Object  VmName, State,  HAstatus
 			 $vmreplicaset | Format-Table -AutoSize 
 			 
-			 $SelectedOVCConnection = New-SSHSession -ComputerName $selectedovcIpAddress -port 22 -Credential $Cred -AcceptKey -ErrorAction Stop
-				
-				if ($SelectedOVCConnection.Connected) {
-				   $SelectedOVCSession = Get-SSHSession | Where-Object { $_.Host -like "$($selectedovcIpAddress)" } | Select-Object SessionId  
-				   $SvtBalanceCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-balance-show --shownodeip"
-				   $SvtSupportCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-support-show"
-					
-				   # Display Datacenter Balance State
-				   $SvtBalance = Invoke-SSHcommand -SessionId $SelectedOVCSession.SessionID -Command $SvtBalanceCmd -TimeOut 60
-				   Write-Host "`n# Datacenter Resource Balancing State #`n" -ForegroundColor White
-				   $SvtBalance.Output
+			
+			 Write-Host "`n# Datacenter Support Reg. State #`n" -ForegroundColor White
+			if ($SelectedOVCConnection.Connected) {
+				$SelectedOVCSession = Get-SSHSession | Where-Object { $_.Host -like "$($selectedovcIpAddress)" } | Select-Object SessionId  
+				$SvtSupportCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-support-show"
 				   
-				   # Display Support State
-				   $SvtSupport = Invoke-SSHcommand -SessionId $SelectedOVCSession.SessionID -Command $SvtSupportCmd  -TimeOut 60
-				   Write-Host "`n# Datacenter Support Reg. State #`n" -ForegroundColor White
-				   $SvtSupport.Output
+				# Display Support State
+				$SvtSupport = Invoke-SSHcommand -SessionId $SelectedOVCSession.SessionID -Command $SvtSupportCmd  -TimeOut 60
+				$SvtSupport.Output
 				   
-			       Remove-SSHSession -SessionId $SelectedOVCSession.SessionID | Out-Null
-	            }
+			    Remove-SSHSession -SessionId $SelectedOVCSession.SessionID | Out-Null
+	         }
  
 			 if ($upgradestate -eq $null -and $memberscount -eq $null -and $arbiterconfigured -eq $null -and $arbiterconnected -eq $null -and $storagefreestate -eq $null -and $vmreplicasetdegreded.Count -eq 0 -and $vmclsstate -eq $null) {
 					 Write-Host "`nMessage: The status of the cluster ($($clusterstate.omnistack_clusters[0].name)) is consistent and you can continue to upgrade .... " -ForegroundColor Green
@@ -628,41 +675,18 @@ function Invoke-SVT {
 				 if ($vmclsstate) {
 				 Write-Host "`nError Message: There are some errors or warnings in the cluster, check cluster state !!!"  -ForegroundColor yellow
 				 }
-			 }	
+			 }
+
+             # Remove SSH Sessşon
+             if ($SelectedOVCConnection.Connected) {
+			    Remove-SSHSession -SessionId $SelectedOVCSession.SessionID | Out-Null
+	         }			 
 			 
 			 Stop-Transcript
 			 
 			 Write-Host "`n#################################################################################################" -ForegroundColor yellow
 			 Write-Host "#                  HPE Simplivity Hosts Pre-Upgrade Health Check Report                           " -ForegroundColor yellow
 			 Write-Host "#################################################################################################`n" -ForegroundColor yellow
-			 
-			 # Get SVT Host Status
-			 Write-Host "### SVT Host List ###" -ForegroundColor White
-			 $hostlist = Get-Cluster -Name $clusterstate.omnistack_clusters[0].name | Get-VMHost
-			 # Create a table to display svt host information
-			 $HostTable = @()
- 
-			 foreach ($HostDetail in $hostlist) {
-					 $EsxiPercentCpu = $(($HostDetail.CpuUsageMhz / $HostDetail.CpuTotalMhz ) * 100).ToString("F0")
-					 $EsxiPercentMem = $(($HostDetail.MemoryUsageGB / $HostDetail.MemoryTotalGB ) * 100).ToString("F0")
-						 
-					 $HostInfo = New-Object PSObject -Property @{
-							 'Name' = $HostDetail.ExtensionData.Name
-							 'ConnectionState' = $HostDetail.ConnectionState
-							 'PowerState' = $HostDetail.PowerState
-							 'OverallStatus' = $HostDetail.ExtensionData.Summary.OverallStatus
-							 'RebootRequired' = $HostDetail.ExtensionData.Summary.RebootRequired
-							 'NumCpu' = $HostDetail.NumCpu
-							 'CpuUsage %' = $EsxiPercentCpu
-							 'MemoryUsage %' = $EsxiPercentMem
-							 'Version' = $HostDetail.Version
-					 }
-					 $HostTable += $HostInfo
-			 }
- 
-			 # Display Detail of SVT Host to the table
-			 $HostTable | Sort -Property 'CpuUsage %', 'MemoryUsage %' | Format-Table -Property 'Name', 'ConnectionState', 'PowerState', 'OverallStatus', 'RebootRequired', 'NumCpu', 'CpuUsage %', 'MemoryUsage %', 'Version' | Format-Table -AutoSize
-			 
 			 
 			 $hoststate = Get-SvtHost -ClusterName $clusterstate.omnistack_clusters[0].name -Raw | ConvertFrom-Json 
 			 
@@ -737,7 +761,6 @@ function Invoke-SVT {
 					 $memusage = 1
 				 }
 				 
- 
 				 Write-Host "`n# SVT Host $($svthost.name) Hardware State  #" -ForegroundColor White
 				 $hosthwinfo = Get-SvtHardware -Hostname $svthost.name -Raw | ConvertFrom-Json 
 				 
@@ -828,8 +851,6 @@ function Invoke-SVT {
 		 
 	            }
                 
-				 
-			 
 				 if ($hostconnectivity -eq $null -and $hostupgradestate -eq $null -and $hostdisktstate -eq $null -and $hostversion -eq $null -and $hwstate -eq $null -and $raidhwstate -eq $null -and $raidbatteryhwstate -eq $null -and $cpuusage -eq $null -and $memusage -eq $null -and $shutdownstate -eq $null) {
 						 Write-Host "`nMessage: The status of the SVT Host ( $($svthost.name) ) is consistent and you can continue to upgrade ....`n" -ForegroundColor Green
 				 
