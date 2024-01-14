@@ -389,6 +389,19 @@ function Invoke-SVT {
 					 Write-Host "Connection could not be established to target OVC Host !!!`n" -ForegroundColor Red
 					 Break
 				 }
+				 
+				 try {
+					 # Attempt to access each OVC IP address using SSH 
+					 Write-Host "Trying to establish connection to the Omnistack Virtual Controller Via SSH: $($selectedovcIpAddress)" -ForegroundColor Yellow
+					 $OVCSSHConnection = New-SSHSession -ComputerName $selectedovcIpAddress -port 22 -Credential $Cred -AcceptKey -ErrorAction Stop
+					 Write-Host "SSH Connection established to target OVC Host - $($selectedovcIpAddress) `n" -ForegroundColor Green
+					 $SSHOVCSession = Get-SSHSession | Where-Object { $_.Host -like "$($selectedovcIpAddress)" } | Select-Object SessionId
+					 
+				 } catch {
+ 
+					 Write-Host "SSH Connection could not be established to target OVC Host !!!`n" -ForegroundColor Red
+					 Break
+				 }
  
 			 } else {
 				 Write-Host "Message: Can Not Get OVC Informations Rleated Cluster, Re-Run Script Then Select Another Cluster !!! `n" -ForegroundColor Red
@@ -403,7 +416,6 @@ function Invoke-SVT {
 			 $arbiterconnected = $null
 			 $storagefreestate = $null
 			 $vmclsstate = $null
-			 $SelectedOVCConnection = New-SSHSession -ComputerName $selectedovcIpAddress -port 22 -Credential $Cred -AcceptKey -ErrorAction Stop
 			 $CLSReportFile = "$($global:ReportDirPath)\$($clusterstate.omnistack_clusters[0].name)-$($logtimestamp).log"
  
 			 # Start a transcript log For Cluster State
@@ -464,18 +476,24 @@ function Invoke-SVT {
 			 }				
 			 Write-Host "VMWare CLs Num Hosts:             $($vmwarecluster.ExtensionData.Summary.NumHosts)"
 			 if ($clustercpuusage.Average -gt 80) {
-			     Write-Host "VMWare CLs Average CPU Usage:     $($clustercpuusage.Average.ToString("F2")) %" -ForegroundColor Yellow
+			     Write-Host "VMWare CLs Average CPU Usage:     $($clustercpuusage.Average.ToString("F2")) % (Last 24 Hours)" -ForegroundColor Yellow
 			 } else {
-                 Write-Host "VMWare CLs Average CPU Usage:     $($clustercpuusage.Average.ToString("F2")) %"
+                 Write-Host "VMWare CLs Average CPU Usage:     $($clustercpuusage.Average.ToString("F2")) % (Last 24 Hours)"
              }
               if ($clustermemusage.Average -gt 80) {			 
-			     Write-Host "VMWare CLs Average Memory Usage:  $($clustermemusage.Average.ToString("F2")) %" -ForegroundColor Yellow
+			     Write-Host "VMWare CLs Average Memory Usage:  $($clustermemusage.Average.ToString("F2")) % (Last 24 Hours)" -ForegroundColor Yellow
 			 } else {
-				  Write-Host "VMWare CLs Average Memory Usage:  $($clustermemusage.Average.ToString("F2")) %"
+				  Write-Host "VMWare CLs Average Memory Usage:  $($clustermemusage.Average.ToString("F2")) % (Last 24 Hours)"
 			 }
 			 Write-Host "VMWare CLs Total VM:              $($vmwarecluster.ExtensionData.Summary.UsageSummary.TotalVmCount)"
 			 Write-Host "VMWare CLs PoweredOff VM:         $($vmwarecluster.ExtensionData.Summary.UsageSummary.PoweredOffVmCount)"
-					 
+				
+             # Shows Datacenter has Intelligent Workload Optimizer enabled or disabled ?
+			 Write-Host "`n### Intelligent Workload Optimizer State ###`n" -ForegroundColor White
+			 $SvtIntWorkCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-iwo-show --datacenter $($selecteddcname) --cluster $($selectedclsname)"
+			 $SvtIntWork = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtIntWorkCmd  -TimeOut 60
+			 $SvtIntWork.Output  
+				
 			 Write-Host "`n### Cluster Arbiter State ###" -ForegroundColor White
 			 
 			 Write-Host "`nRequired Arbiter:                  $($clusterstate.omnistack_clusters[0].arbiter_required)"
@@ -548,17 +566,11 @@ function Invoke-SVT {
 			 # Display Detail of SVT Host to the table
 			 $HostTable | Sort -Property 'CpuUsage %', 'MemoryUsage %' | Format-Table -Property 'Name', 'ConnectionState', 'PowerState', 'OverallStatus', 'RebootRequired', 'NumCpu', 'CpuUsage %', 'MemoryUsage %', 'Version' | Format-Table -AutoSize
 			 
-			 Write-Host "# Datacenter Resource Balancing State #`n" -ForegroundColor White
-			 if ($SelectedOVCConnection.Connected) {
-				   $SelectedOVCSession = Get-SSHSession | Where-Object { $_.Host -like "$($selectedovcIpAddress)" } | Select-Object SessionId  
-				   $SvtBalanceCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-balance-show --shownodeip"
-				
-				   # Display Datacenter Balance State
-				   $SvtBalance = Invoke-SSHcommand -SessionId $SelectedOVCSession.SessionID -Command $SvtBalanceCmd -TimeOut 60
-				   $SvtBalance.Output
-				  
-	         }
-			 
+			 # Display Datacenter Balance State
+			 Write-Host "### Datacenter Resource Balancing State ###`n" -ForegroundColor White
+             $SvtBalanceCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-balance-show --shownodeip --consumption --showHiveName"	
+			 $SvtBalance = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtBalanceCmd -TimeOut 60
+			 $SvtBalance.Output	 
 			 
              # Get SVT Datastore Status
 			 Write-Host "`n### Datastore List ###" -ForegroundColor White
@@ -604,10 +616,20 @@ function Invoke-SVT {
 			 Write-Host "### Backup Policies ###" -ForegroundColor White
 			 $BackupRulesTable | Format-Table -Property 'Policy Name', 'Backup Days', 'Rule Number', 'Destination', 'External Store Name', 'Frequency - Hours', 'Expiration Time - Day'
 
+             # Displays information about the backups queued for replication on the backup state machine
+			 Write-Host "# Backups Queued For Replication On The Backup State Machine #`n" -ForegroundColor White
+			 $SvtBackupQueueCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/dsv/dsv-backup-util --operation state-info"
+			 $SvtBackupQueue = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtBackupQueueCmd  -TimeOut 60
+			 if ($SvtBackupQueue.Output) {
+				 $SvtBackupQueue.Output
+			 }else {
+				 Write-Host "Backup Queue Is Empty On The Backup State Machine For Replication... `n"
+			 }
 			 
-			 Write-Host "### The Information Of Driven Virtual Machines ###" -ForegroundColor White
+			   
 			 
 			 # Get Virtual Machine States
+			 Write-Host "`n### The Information Of Driven Virtual Machines ###" -ForegroundColor White
 			 $VMDetailList = Get-Cluster -Name $clusterstate.omnistack_clusters[0].name | Get-VM
 			 # Create a table to display virtual machine information
 			 $VMTable = @()
@@ -628,25 +650,20 @@ function Invoke-SVT {
 			 # Display Detail of VM to the table
 			 $VMTable | Sort -Property 'VMHost', 'Power State', 'Memory (GB)' | Format-Table -Property 'VM Name', 'Power State', 'Overall Status', 'Config Status', 'CPU Count', 'Memory (GB)', 'Guest OS', 'VM Host' 
 			 
+			 # Get VM Replicaset State
 			 Write-Host "`n### The Information Of VM Replicasets ###" -ForegroundColor White
-			 
-			 # Get VM Replicaset State 
 			 $vmreplicaset = Get-SVTvmReplicaSet -ClusterName $clusterstate.omnistack_clusters[0].name  | Select-Object  VmName, State,  HAStatus 
 			 $vmreplicasetdegreded = Get-SVTvmReplicaSet -ClusterName $clusterstate.omnistack_clusters[0].name | Where-Object  HAStatus -eq  DEGRADED   |  Select-Object  VmName, State,  HAstatus
 			 $vmreplicaset | Format-Table -AutoSize 
 			 
-			
-			 Write-Host "`n# Datacenter Support Reg. State #`n" -ForegroundColor White
-			if ($SelectedOVCConnection.Connected) {
-				$SelectedOVCSession = Get-SSHSession | Where-Object { $_.Host -like "$($selectedovcIpAddress)" } | Select-Object SessionId  
-				$SvtSupportCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-support-show"
+			 # Display Support State
+			 Write-Host "`n### Datacenter Support Reg. State ###`n" -ForegroundColor White
+			 $SvtSupportCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-support-show"
+			 $SvtSupport = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtSupportCmd  -TimeOut 60
+			 $SvtSupport.Output
 				   
-				# Display Support State
-				$SvtSupport = Invoke-SSHcommand -SessionId $SelectedOVCSession.SessionID -Command $SvtSupportCmd  -TimeOut 60
-				$SvtSupport.Output
-				   
-			    Remove-SSHSession -SessionId $SelectedOVCSession.SessionID | Out-Null
-	         }
+             # Remove OVC SSH Sessşon
+			 Remove-SSHSession -SessionId $SSHOVCSession.SessionID | Out-Null
  
 			 if ($upgradestate -eq $null -and $memberscount -eq $null -and $arbiterconfigured -eq $null -and $arbiterconnected -eq $null -and $storagefreestate -eq $null -and $vmreplicasetdegreded.Count -eq 0 -and $vmclsstate -eq $null) {
 					 Write-Host "`nMessage: The status of the cluster ($($clusterstate.omnistack_clusters[0].name)) is consistent and you can continue to upgrade .... " -ForegroundColor Green
@@ -676,11 +693,7 @@ function Invoke-SVT {
 				 Write-Host "`nError Message: There are some errors or warnings in the cluster, check cluster state !!!"  -ForegroundColor yellow
 				 }
 			 }
-
-             # Remove SSH Sessşon
-             if ($SelectedOVCConnection.Connected) {
-			    Remove-SSHSession -SessionId $SelectedOVCSession.SessionID | Out-Null
-	         }			 
+		 
 			 
 			 Stop-Transcript
 			 
@@ -701,21 +714,33 @@ function Invoke-SVT {
 				 $cpuusage = $null
 				 $memusage = $null
 				 $shutdownstate = $null
-				 
 				 # Get SVT Host Shutdown State
-				 $getshutdownstate = Get-SvtShutdownStatus -Hostname  $svthost.name | Select-Object ShutdownStatus
-				  
+				 $getshutdownstate = Get-SvtShutdownStatus -Hostname  $svthost.name | Select-Object ShutdownStatus  
 				 # Get ESXI Host Infromation
 				 $esxihost = Get-VMHost -Name $svthost.name  | Select-Object -Property NumCpu, CpuTotalMhz, CpuUsageMhz, MemoryTotalGB, MemoryUsageGB, Version, Build 
 				 $percentCpu = $(($esxihost.CpuUsageMhz / $esxihost.CpuTotalMhz ) * 100).ToString("F0")
-				 $percentMem = $(($esxihost.MemoryUsageGB / $esxihost.MemoryTotalGB ) * 100).ToString("F0")		
-				 
+				 $percentMem = $(($esxihost.MemoryUsageGB / $esxihost.MemoryTotalGB ) * 100).ToString("F0")	
+                 $NetTestCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-network-test --datacenter $($selecteddcname) --cluster $($selectedclsname)"  
+				 $ServiceStateCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-managed-service-show"
+				 $cfgdbstateCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-cfgdb-get-sync-status"
+				 $NetStateCmd = "/bin/netstat -win"				 
 				 $HOSTReportFile = "$($global:ReportDirPath)\$($svthost.name)-$($logtimestamp).log"
  
 			     # Start a transcript log for SVT Hosts
 			     Start-Transcript -Path $HOSTReportFile 
 				 
 				 Write-Host "`n#### SVT Host: $($svthost.name) ####`n" -ForegroundColor yellow
+				 
+				 try {
+					 # Attempt to access each OVC IP address using SSH 
+					 $SSHOVCConnection = New-SSHSession -ComputerName $svthost.management_ip -port 22 -Credential $Cred -AcceptKey -ErrorAction Stop
+					 $OVCSession = Get-SSHSession | Where-Object { $_.Host -like "$($svthost.management_ip)" } | Select-Object SessionId
+					 
+				 } catch {
+ 
+					 Write-Host "`nSSH Connection could not be established to OVC Host: $($svthost.name)!!!`n" -ForegroundColor Red
+					 Break
+				 }
 				 
 				 Write-Host "`nSVT Host Name:               $($svthost.name)"
 				 Write-Host "SVT Host IP:                 $($svthost.hypervisor_management_system)"
@@ -788,6 +813,8 @@ function Invoke-SVT {
 					 $raidbatteryhwstate = 1
 				 }
 				 
+				 
+				 Write-Host "`n# SVT Host $($svthost.name) Disk State #" -ForegroundColor White
 				 $hostdisktstate = Get-SvtDisk -Hostname $svthost.name | Where-Object Health -ne HEALTHY
 				 $hostdiskinfo = Get-SvtDisk -Hostname $svthost.name | Select-Object SerialNumber, Manufacturer, ModelNumber, Health, RemainingLife, CapacityTB, Slot
 				 $diskTable = $hostdiskinfo | ForEach-Object {
@@ -802,9 +829,10 @@ function Invoke-SVT {
 					 }
 				 }
 				 
-				 Write-Host "`n# SVT Host $($svthost.name) Disk State #" -ForegroundColor White
 				 $diskTable | Format-Table -AutoSize
 				 
+		
+				Write-Host "`n# Omnistack Vrutal Controller $($svthost.virtual_controller_name) Net State #" -ForegroundColor White
 				 # Create OVC Host IP Table
 				$ovchosttable = $svthost| ForEach-Object {
 					 [PSCustomObject]@{
@@ -819,38 +847,31 @@ function Invoke-SVT {
 						 'Str MTU        ' = $_.storage_mtu
 					 }
 				 }
-				 
-				# Displaying the table
-				Write-Host "`n# Omnistack Vrutal Controller $($svthost.virtual_controller_name) Net State #" -ForegroundColor White
 				$ovchosttable | Format-Table
- 
-                $SSHOVCConnection = New-SSHSession -ComputerName $svthost.management_ip -port 22 -Credential $Cred -AcceptKey -ErrorAction Stop
-				
-				if ($SSHOVCConnection.Connected) {
-				   $OVCSession = Get-SSHSession | Where-Object { $_.Host -like "$($svthost.management_ip)" } | Select-Object SessionId
-				   $NetTestCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-network-test --datacenter $($selecteddcname) --cluster $($selectedclsname)"  
-				   $ServiceStateCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-managed-service-show"
-				   $NetStateCmd = "/bin/netstat -win"
 					
-				   # Display Network Interface States
-				   $NetState = Invoke-SSHcommand -SessionId $OVCSession.SessionID -Command $NetStateCmd -TimeOut 60
-				   Write-Host "`n# Omnistack Vrutal Controller $($svthost.virtual_controller_name) Network Interface State #`n" -ForegroundColor White
-				   $NetState.Output
+				# Display Network Interface States
+				$NetState = Invoke-SSHcommand -SessionId $OVCSession.SessionID -Command $NetStateCmd -TimeOut 60
+				Write-Host "`n# Omnistack Vrutal Controller $($svthost.virtual_controller_name) Network Interface State #`n" -ForegroundColor White
+				$NetState.Output
 				   
-				   # Display Network Test Results
-				   $NetTest = Invoke-SSHcommand -SessionId $OVCSession.SessionID -Command $NetTestCmd -TimeOut 60
-				   Write-Host "`n# Omnistack Vrutal Controller $($svthost.virtual_controller_name) Network Connectivity Test #`n" -ForegroundColor White
-				   $NetTest.Output
+				# Display Network Test Results
+				$NetTest = Invoke-SSHcommand -SessionId $OVCSession.SessionID -Command $NetTestCmd -TimeOut 60
+				Write-Host "`n# Omnistack Vrutal Controller $($svthost.virtual_controller_name) Network Connectivity Test #`n" -ForegroundColor White
+				$NetTest.Output
 			
-				   # Display Service States
-				   $ServiceState = Invoke-SSHcommand -SessionId $OVCSession.SessionID -Command $ServiceStateCmd -TimeOut 60
-				   Write-Host "`n# Omnistack Vrutal Controller $($svthost.virtual_controller_name) Host Status Of All Managed Services. #`n" -ForegroundColor White
-				   $ServiceState.Output
-				   
-			       Remove-SSHSession -SessionId $OVCSession.SessionID | Out-Null
-		 
-	            }
-                
+			    # Retrieves the sync status of this HPE OmniStack host from CfgDB.
+				$cfgdbstate = Invoke-SSHcommand -SessionId $OVCSession.SessionID -Command $cfgdbstateCmd -TimeOut 60
+				Write-Host "`n# Omnistack Vrutal Controller $($svthost.virtual_controller_name) CfgDB Sync Status #`n" -ForegroundColor White
+				$cfgdbstate.Output
+				
+				# Display Service States
+				$ServiceState = Invoke-SSHcommand -SessionId $OVCSession.SessionID -Command $ServiceStateCmd -TimeOut 60
+				Write-Host "`n# Omnistack Vrutal Controller $($svthost.virtual_controller_name) Host Status Of All Managed Services. #`n" -ForegroundColor White
+				$ServiceState.Output
+				 
+				# Remove OVC SSH Sessşon
+			    Remove-SSHSession -SessionId $OVCSession.SessionID | Out-Null
+		    
 				 if ($hostconnectivity -eq $null -and $hostupgradestate -eq $null -and $hostdisktstate -eq $null -and $hostversion -eq $null -and $hwstate -eq $null -and $raidhwstate -eq $null -and $raidbatteryhwstate -eq $null -and $cpuusage -eq $null -and $memusage -eq $null -and $shutdownstate -eq $null) {
 						 Write-Host "`nMessage: The status of the SVT Host ( $($svthost.name) ) is consistent and you can continue to upgrade ....`n" -ForegroundColor Green
 				 
