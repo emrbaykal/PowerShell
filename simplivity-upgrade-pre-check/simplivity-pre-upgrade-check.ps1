@@ -10,6 +10,7 @@
     This Script perform Pre-Upgrade Checks to the simplivity servers.
 	
 .EXAMPLE
+    PS C:\HPEiLOCmdlets\Samples\> set-executionpolicy remotesigned
     PS C:\HPEiLOCmdlets\Samples\> .\simplivity-pre-upgrade-check.ps1
 	
 	This script does not take any parameter and gets the server information for the given target iLO's.
