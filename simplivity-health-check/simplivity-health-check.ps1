@@ -1,21 +1,29 @@
 ####################################################################
-#HPE Simplivity Pre-Upgrade Check                                  #
+#                  HPE Simplivity Health Check                #
 ####################################################################
 
 <#
 .Synopsis
-    This Script perform Pre-Upgrade Checks to the simplivity servers.
+    This Script perform Health Checks to the simplivity servers.
 
 .DESCRIPTION
-    This Script perform Pre-Upgrade Checks to the simplivity servers.
+    This Script perform Health Checks to the simplivity servers.
 	
 .EXAMPLE
-    PS C:\HPEiLOCmdlets\Samples\> set-executionpolicy remotesigned
-    PS C:\HPEiLOCmdlets\Samples\> .\simplivity-pre-upgrade-check.ps1
+    PS C:\HPEiLOCmdlets\Samples\> . .\simplivity-health-check.ps1
 	
-	This script does not take any parameter and gets the server information for the given target iLO's.
-    
-.INPUTS
+	1- SVT Cluster State Check:
+	 
+	   PS C:\HPEiLOCmdlets\Samples\> Get-SVT-Cluster
+	 
+    2- Collect Simplivity Support Dump:
+	 
+	   PS C:\HPEiLOCmdlets\Samples\> Get-SVT-Support-Dump
+	   
+	3- Check Update Manager Host Requirements
+	 
+	   PS C:\HPEiLOCmdlets\Samples\> Get-Update-Manager
+	   
 .INPUTS
 	Customer Name & Surname ,Customer E-Mail, Company Name, VMWare VCenter Server(ip), VCenter Username & Password.   
 
@@ -26,8 +34,8 @@
 	Always run the PowerShell in administrator mode to execute the script.
 	
     Company : Hewlett Packard Enterprise
-    Version : 2.1.0.0
-    Date    : 12/23/2023
+    Version : 2.2.0.0
+    Date    : 01/19/2024
 	AUTHOR  : Emre Baykal - HPE Services
 #>
 
@@ -126,16 +134,6 @@ function Invoke-SVT {
 		 Write-host ""
 	 }
  
-	 $Error.Clear()
- 
- 
-	 if($Error.Count -ne 0)
-	 { 
-		 Write-Host "`nPlease launch the PowerShell in administrator mode and run the script again." -ForegroundColor Yellow 
-		 Write-Host "`n****** Script execution terminated ******" -ForegroundColor Red 
-		 break 
-	 }	
- 
  
 	 # Check if the credential file already exists
 	 if (-Not (Test-Path $InfraVariableFile)) {
@@ -231,6 +229,35 @@ function Invoke-SVT {
 
  }
  
+function Test-Net-Connection($destination)  {
+	
+	try {
+		
+		$Global:ProgressPreference = 'SilentlyContinue'
+		$portlist = @(
+		   "22"
+		   "443" 
+		   "80"
+		)
+		
+		foreach ($port in $portlist) {
+				$connection = Test-NetConnection -Port $port -ComputerName $destination -ErrorAction stop -WarningAction Stop
+		}
+
+		Write-Host "Message: TCP Port Connection Test Success...`n" -ForegroundColor Green
+			
+	} catch {
+		
+		Write-Host "`nMessage: TCP Port Connection Test Failed, Check Firewall or Network Infrastructure !!! `n" -ForegroundColor Red
+		Break
+			
+	}
+	
+	$Global:ProgressPreference = 'Continue'
+	$Error.Clear()
+	 
+}
+ 
  function Get-SVT-Cluster {
 	 
 	 Write-Host "`n####################################################################"
@@ -245,6 +272,10 @@ function Invoke-SVT {
  
 	 ## Authentication & Variables & Installed Modules
 	 Invoke-SVT
+	 
+	 ## Network Port Test
+	 Write-Host "`nExecuting TCP Ports Connection Tests (22/TCP, 443/TCP, 80/TCP) To The VMware VCenter..."  -ForegroundColor Yellow
+	 Test-Net-Connection $global:vCenterServer
  
 	 try {
 	 #######	
@@ -254,7 +285,7 @@ function Invoke-SVT {
 			 #Login Vmware VCenter
 			 try {
  
-				 Write-Output "`nTrying to establish connection to the Vmware Virtual Center Server:"
+				 Write-Output "Trying to establish connection to the Vmware Virtual Center Server:"
 				 $VMWareVcenter = Connect-VIServer -Server $global:vCenterServer -Protocol https -Credential $global:Cred -Force -ErrorAction Stop
  
 				 Write-Host "Connection established to target VCenter $($global:vCenterServer)`n" -ForegroundColor Green
@@ -378,9 +409,12 @@ function Invoke-SVT {
  
 				 } while ($true)
 				 
+                ## Network Port Test
+	            Write-Host "Executing TCP Ports Connection Tests (22/TCP, 443/TCP, 80/TCP) To The Omnistack Virtual Controller: $($selectedovcIpAddress) ..."  -ForegroundColor Yellow
+	            Test-Net-Connection $selectedovcIpAddress
  
 				 try {
-					 # Attempt to access each OVC IP address in the array
+					 # Attempt to access OVC IP address in the array
 					 Write-Host "Trying to establish connection to the Omnistack Virtual Controller: $($selectedovcIpAddress)" -ForegroundColor Yellow
 					 $svt_connection = Connect-Svt -ovc $selectedovcIpAddress -Credential $global:Cred -ErrorAction Stop
  
@@ -627,8 +661,6 @@ function Invoke-SVT {
 				 Write-Host "Backup Queue Is Empty On The Backup State Machine For Replication... `n"
 			 }
 			 
-			   
-			 
 			 # Get Virtual Machine States
 			 Write-Host "`n### The Information Of Driven Virtual Machines ###" -ForegroundColor White
 			 $VMDetailList = Get-Cluster -Name $clusterstate.omnistack_clusters[0].name | Get-VM
@@ -694,8 +726,7 @@ function Invoke-SVT {
 				 Write-Host "`nError Message: There are some errors or warnings in the cluster, check cluster state !!!"  -ForegroundColor yellow
 				 }
 			 }
-		 
-			 
+		  
 			 Stop-Transcript
 			 
 			 Write-Host "`n#################################################################################################" -ForegroundColor yellow
@@ -726,22 +757,28 @@ function Invoke-SVT {
 				 $cfgdbstateCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-cfgdb-get-sync-status"
 				 $NetStateCmd = "/bin/netstat -win"				 
 				 $HOSTReportFile = "$($global:ReportDirPath)\$($svthost.name)-$($logtimestamp).log"
- 
-			     # Start a transcript log for SVT Hosts
-			     Start-Transcript -Path $HOSTReportFile 
 				 
-				 Write-Host "`n#### SVT Host: $($svthost.name) ####`n" -ForegroundColor yellow
+				Write-Host "`n#### SVT Host: $($svthost.name) ####`n" -ForegroundColor yellow
+				
+				## Network Port Test
+				Write-Host "Executing TCP Ports Connection Tests (22/TCP, 443/TCP, 80/TCP) To The Omnistack Virtual Controller: $($svthost.name) ..."  -ForegroundColor Yellow
+	            Test-Net-Connection $svthost.management_ip
 				 
 				 try {
-					 # Attempt to access each OVC IP address using SSH 
+					 # Attempt to access each OVC IP address using SSH
+					 Write-Host "Trying to establish connection to the OVC Host: $($svthost.name)" -ForegroundColor Yellow
 					 $SSHOVCConnection = New-SSHSession -ComputerName $svthost.management_ip -port 22 -Credential $Cred -AcceptKey -ErrorAction Stop
 					 $OVCSession = Get-SSHSession | Where-Object { $_.Host -like "$($svthost.management_ip)" } | Select-Object SessionId
+					 Write-Host "Connection established to target OVC Host - $($svthost.name) `n" -ForegroundColor Green
 					 
 				 } catch {
  
 					 Write-Host "`nSSH Connection could not be established to OVC Host: $($svthost.name)!!!`n" -ForegroundColor Red
 					 Break
 				 }
+ 
+			     # Start a transcript log for SVT Hosts
+			     Start-Transcript -Path $HOSTReportFile 
 				 
 				 Write-Host "`nSVT Host Name:               $($svthost.name)"
 				 Write-Host "SVT Host IP:                 $($svthost.hypervisor_management_system)"
@@ -986,23 +1023,28 @@ function Invoke-SVT {
 	 finally
 	 {
 			
-			 Write-Host "Disconnect from vCenter Server`n" -ForegroundColor Yellow
+			 Write-Host "Disconnect from vCenter Server..." -ForegroundColor Yellow
 			 # Disconnect from vCenter Server
 			 Disconnect-VIServer -Server $global:vCenterServer -Force -Confirm:$false
+			 
+			 Write-Host "Disconnect All SSH Session...`n" -ForegroundColor Yellow
+			 # Disconnect ALL SSH Sessşon
+			 Get-SSHSession | Remove-SSHSession | Out-Null
  
 			 if($Error.Count -ne 0 )
 			 {
-				 Write-Host "`nScript executed with few errors. Check the log files for more information.`n" -ForegroundColor Red
+			 	 Write-Host "Script executed with few errors !!!" -ForegroundColor Red
+		         Write-host -f Red "Error:" $Error 
 			 }
 			 
-			 Write-Host "`n****** Script execution completed ******" -ForegroundColor Yellow
+			 Write-Host "****** Script execution completed ******" -ForegroundColor Yellow
 	 }
 	 
  ### End Function
  }
  
  function Get-SVT-Support-Dump {
- 
+    try {
 			 Write-Host "`n#################################################################################################"
 			 Write-Host "#                               Capture Support Dump                                            #"
 			 Write-Host "#################################################################################################`n"
@@ -1016,6 +1058,10 @@ function Invoke-SVT {
  
 			 ## Authentication & Variables & Installed Modules
 			 Invoke-SVT
+			 
+			 ## Network Port Test
+	         Write-Host "`nExecuting TCP Ports Connection Tests (22/TCP, 443/TCP, 80/TCP) To The VMware VCenter..."  -ForegroundColor Yellow
+	         Test-Net-Connection $global:vCenterServer
  
 			 #Login Vmware VCenter
 			 try {
@@ -1144,6 +1190,10 @@ function Invoke-SVT {
  
 				 } while ($true)
  
+                ## Network Port Test
+	            Write-Host "Executing TCP Ports Connection Tests (22/TCP, 443/TCP, 80/TCP) To The Omnistack Virtual Controller: $($selectedovcIpAddress) ..."  -ForegroundColor Yellow
+	            Test-Net-Connection $selectedovcIpAddress
+ 
 				 try {
 					 # Attempt to access  OVC IP address in the array    
 					 $SSHDumpCon = New-SSHSession -ComputerName $selectedovcIpAddress -port 22 -Credential $Cred -ErrorAction Stop
@@ -1232,6 +1282,30 @@ function Invoke-SVT {
 						 }
 					 }		 
 			 }
+			 
+	}
+    catch {}
+	
+	finally
+	{
+			
+			 Write-Host "Disconnect from vCenter Server..." -ForegroundColor Yellow
+			 # Disconnect from vCenter Server
+			 Disconnect-VIServer -Server $global:vCenterServer -Force -Confirm:$false
+			 
+			 Write-Host "Disconnect All SSH Session`n" -ForegroundColor Yellow
+			 # Disconnect ALL SSH Sessşon
+			 Get-SSHSession | Remove-SSHSession | Out-Null
+ 
+			 if($Error.Count -ne 0 )
+			 {
+			 	 Write-Host "Script executed with few errors !!!" -ForegroundColor Red
+		         Write-host -f Red "Error:" $Error 
+			 }
+			 
+			 Write-Host "****** Script execution completed ******" -ForegroundColor Yellow
+	}
+	
  }
  
  function Get-Update-Manager{
@@ -1359,13 +1433,10 @@ function Invoke-SVT {
 	 {
 		 if($Error.Count -ne 0 )
 		 {
-			 Write-Host "`nScript executed with few errors. Check the log files for more information.`n" -ForegroundColor Red
+			 Write-Host "`nScript executed with few errors !!!`n" -ForegroundColor Red
 		 }
 			 
 			 Write-Host "`n****** Script execution completed ******" -ForegroundColor Yellow
 	 }
- 
-	 
-	 
  ### End Function	
  }
