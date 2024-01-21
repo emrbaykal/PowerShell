@@ -1,5 +1,5 @@
 ####################################################################
-#                  HPE Simplivity Health Check                #
+#                  HPE Simplivity Health Check                     #
 ####################################################################
 
 <#
@@ -10,19 +10,25 @@
     This Script perform Health Checks to the simplivity servers.
 	
 .EXAMPLE
-    PS C:\HPEiLOCmdlets\Samples\> . .\simplivity-health-check.ps1
+    PS C:\Simplivity-Health-Check\> Set-ExecutionPolicy Unrestricted 
+
+    PS C:\Simplivity-Health-Check\> . .\simplivity-health-check.ps1
 	
 	1- SVT Cluster State Check:
 	 
-	   PS C:\HPEiLOCmdlets\Samples\> Get-SVT-Cluster
+	   PS C:\Simplivity-Health-Check\> Get-SVT-Cluster
 	 
     2- Collect Simplivity Support Dump:
 	 
-	   PS C:\HPEiLOCmdlets\Samples\> Get-SVT-Support-Dump
+	   PS C:\Simplivity-Health-Check\> Get-SVT-Support-Dump
 	   
-	3- Check Update Manager Host Requirements
+	3- Upload Report Files To The HPE SFTP Server:
 	 
-	   PS C:\HPEiLOCmdlets\Samples\> Get-Update-Manager
+	   PS C:\Simplivity-Health-Check\> Upload-Report-Files
+	   
+	4- Check Update Manager Host Requirements
+	 
+	   PS C:\Simplivity-Health-Check\> Get-Update-Manager
 	   
 .INPUTS
 	Customer Name & Surname ,Customer E-Mail, Company Name, VMWare VCenter Server(ip), VCenter Username & Password.   
@@ -38,18 +44,21 @@
     Date    : 01/19/2024
 	AUTHOR  : Emre Baykal - HPE Services
 #>
+Clear-Host
 
-function Invoke-SVT {
+Write-Host "#############################################################################################################################"  -ForegroundColor White
+Write-Host "#                                   Welcome to HPE Simplivity Health Check PowerCLI                                         #" -ForegroundColor White
+Write-Host "#############################################################################################################################`n" -ForegroundColor White
+
+Write-Host "Note: This PowerShell Script Performs Health Checks On HPE SimpliVity Systems To Ensure The System Is Functioning Properly.`n" 
+
+Write-Host "* If you want to perform analysis on SimpliVity Cluster and SVT hosts: Get-SVT-Cluster "  
+Write-Host "* If you want to collect support dump on Omnistack Host:               Get-SVT-Support-Dump "
+Write-Host "* If you want to upload report files to the HPE SFTP server:           Upload-Report-Files " 
+Write-Host "* If you want to check update manager host requirements met:           Get-Update-Manager`n" 
+
+function Load-Modules {
 	
-	# Define the path to variable file
-	 $InfraVariableFile = ".\infra_variable.json"
- 
-	 # Define the path to the credential file
-	 $credFile = ".\cred.XML"
-	 
-	 #Reports Directory
-	 $global:ReportDirPath= ".\Reports"
- 
 	 #Load HPESimpliVity , VMware.PowerCLI, Posh-SSH
 	 Write-Host "Checking PowerShell Modules That Should Be loaded... "
 	 $InstalledModule = Get-Module -ListAvailable
@@ -58,7 +67,7 @@ function Invoke-SVT {
 	 if(-not($ModuleNames -like "HPESimpliVity") -or -not($ModuleNames -like "VMware.PowerCLI") -or -not($ModuleNames -like "Posh-SSH"))
 	 {
 		 Write-Host "Copying Modules to C:\Users\$($Env:UserName)\Documents\WindowsPowerShell\Modules Directory.. " -ForegroundColor Yellow
-		 Copy-Item -Path ".\PowerShell-Modules\*" -Destination "C:\Users\$($Env:UserName)\Documents\WindowsPowerShell\Modules" -Recurse -ErrorVariable capturedErrors -ErrorAction SilentlyContinue
+		 Copy-Item -Path "$PSScriptRoot\PowerShell-Modules\*" -Destination "C:\Users\$($Env:UserName)\Documents\WindowsPowerShell\Modules" -Recurse -ErrorVariable capturedErrors -ErrorAction SilentlyContinue
 		 $capturedErrors | foreach-object { if ($_ -notmatch "already exists") { write-error $_ } }
 		 
 		 Write-Host "Loading modules :  HPESimpliVity ,VMware.PowerCLIs, Posh-SSH " -ForegroundColor Yellow
@@ -130,15 +139,30 @@ function Invoke-SVT {
 		 }
 		 
 		 
-		 Write-Host "HPESimpliVity Module Version : $($InstalledSimplivityModule.Version) , VMware Module Version : $($InstalledVmwareModule.Version) , SSH Module Version: $($InstalledPoshSSHModule) installed on your machine." -ForegroundColor Green
+		 Write-Host "HPESimpliVity Module Version : $($InstalledSimplivityModule.Version) , VMware Module Version : $($InstalledVmwareModule.Version) , SSH Module Version: $($InstalledPoshSSHModule.Version) installed on your machine." -ForegroundColor Green
 		 Write-host ""
 	 }
  
+	
+}
+function Invoke-SVT {
+	
+	# Define the path to variable file
+	 $InfraVariableFile = "$PSScriptRoot\infra_variable.json"
+ 
+	 # Define the path to the credential file
+	 $credFile = "$PSScriptRoot\cred.XML"
+	 
+	 #Reports Directory
+	 $global:ReportDirPath= "$PSScriptRoot\Reports"
+ 
+	 #Load Requşred Powershell Modules
+	 Load-Modules
  
 	 # Check if the credential file already exists
 	 if (-Not (Test-Path $InfraVariableFile)) {
 		 do {
-		 Write-Host "`nPlease fill in the following information about customer..." -ForegroundColor Yellow
+		 Write-Host "Please fill in the following information about customer..." -ForegroundColor Yellow
 		 
 		 # Define Customer Name / Enter the name of the person who administers the system.
 		 $global:customername  = Read-Host -Prompt 'Customer Name & Surname '
@@ -204,7 +228,7 @@ function Invoke-SVT {
 	 # Check if the credential file already exists
 	 if (-Not (Test-Path $credFile)) {
 		 # Prompt the user for credentials
-		 $global:Cred = Get-Credential -Message 'Enter VMWare VCenter Server Credential' -Username 'administrator@vsphere.local' | Export-Clixml .\cred.XML
+		 $global:Cred = Get-Credential -Message 'Enter VMWare VCenter Server Credential' -Username 'administrator@vsphere.local' | Export-Clixml "$PSScriptRoot\cred.XML"
 		 Write-Host "Credentials saved to $credFile."
 		 
 	 } else {
@@ -212,7 +236,7 @@ function Invoke-SVT {
 	 }
  
 	 #Import Credential File
-	 $global:Cred = Import-CLIXML .\cred.XML
+	 $global:Cred = Import-CLIXML "$PSScriptRoot\cred.XML"
 	 
 		 #Check if Reports Directory Exists
 	 if(!(Test-Path -Path $global:ReportDirPath))
@@ -260,9 +284,11 @@ function Test-Net-Connection($destination)  {
  
  function Get-SVT-Cluster {
 	 
-	 Write-Host "`n####################################################################"
-	 Write-Host "#                     HPE Simplivity Pre-Upgrade Check             #"
-	 Write-Host "####################################################################`n"
+	 Clear-Host
+	 
+	 Write-Host "`n#############################################################################################################################"  -ForegroundColor White
+     Write-Host "#                                              HPE Simplivity Health Check                                                  #" -ForegroundColor White
+     Write-Host "#############################################################################################################################`n" -ForegroundColor White
  
 	 # Define Report Date
 	 $reportdate = get-date -Format "dddd dd/MM/yyyy HH:mm"
@@ -455,10 +481,10 @@ function Test-Net-Connection($destination)  {
  
 			 # Start a transcript log For Cluster State
 			 Start-Transcript -Path $CLSReportFile 
-					 
-			 Write-Host "`n####################################################################" -ForegroundColor Yellow
-			 Write-Host "#     HPE Simplivity Cluster Pre-Upgrade Health Check Report       #" -ForegroundColor Yellow
-			 Write-Host "####################################################################`n" -ForegroundColor Yellow
+					 		 
+			 Write-Host "`n#############################################################################################################################" -ForegroundColor Yellow
+			 Write-Host "#                                    HPE Simplivity Cluster Health Check Report                                             #" -ForegroundColor Yellow
+			 Write-Host "#############################################################################################################################`n" -ForegroundColor Yellow
  
 			 Write-Host "`nReport Creation Date: $($reportdate)" 
 			 Write-Host "Customer Name:        $($global:customername)" 	
@@ -729,9 +755,9 @@ function Test-Net-Connection($destination)  {
 		  
 			 Stop-Transcript
 			 
-			 Write-Host "`n#################################################################################################" -ForegroundColor yellow
-			 Write-Host "#                  HPE Simplivity Hosts Pre-Upgrade Health Check Report                           " -ForegroundColor yellow
-			 Write-Host "#################################################################################################`n" -ForegroundColor yellow
+			 Write-Host "`n#############################################################################################################################" -ForegroundColor Yellow
+			 Write-Host "#                                      HPE Simplivity Hosts Health Check Report                                             #" -ForegroundColor Yellow
+			 Write-Host "#############################################################################################################################`n" -ForegroundColor Yellow
 			 
 			 $hoststate = Get-SvtHost -ClusterName $clusterstate.omnistack_clusters[0].name -Raw | ConvertFrom-Json 
 			 
@@ -778,7 +804,9 @@ function Test-Net-Connection($destination)  {
 				 }
  
 			     # Start a transcript log for SVT Hosts
-			     Start-Transcript -Path $HOSTReportFile 
+			     Start-Transcript -Path $HOSTReportFile
+
+                 Write-Host "`n#### SVT Host Summary: $($svthost.name) ####`n" -ForegroundColor White				 
 				 
 				 Write-Host "`nSVT Host Name:               $($svthost.name)"
 				 Write-Host "SVT Host IP:                 $($svthost.hypervisor_management_system)"
@@ -953,9 +981,13 @@ function Test-Net-Connection($destination)  {
 				 Write-Host "`n"
 			 }	 
  
-			 Write-Host "`n#################################################################################################" -ForegroundColor yellow
-			 Write-Host "#                               Capture Balance File                                             #" -ForegroundColor yellow
-			 Write-Host "#################################################################################################`n" -ForegroundColor yellow
+             
+			 
+			 
+ 
+			 Write-Host "`n#############################################################################################################################" -ForegroundColor Yellow
+			 Write-Host "#                                                Capture Balance File                                                       #" -ForegroundColor Yellow
+			 Write-Host "#############################################################################################################################`n" -ForegroundColor Yellow
  
 			 $sshbalance = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-balance-manual --datacenter $($selecteddcname) --cluster $($selectedclsname)"
 			 $sshmovebalance = 'sudo find /tmp/balance/replica_distribution_file*.csv -maxdepth 1 -type f -exec cp {} /core/capture/  \;'
@@ -1044,10 +1076,14 @@ function Test-Net-Connection($destination)  {
  }
  
  function Get-SVT-Support-Dump {
+	 
+	Clear-Host
+	
     try {
-			 Write-Host "`n#################################################################################################"
-			 Write-Host "#                               Capture Support Dump                                            #"
-			 Write-Host "#################################################################################################`n"
+			 
+			 Write-Host "#############################################################################################################################" -ForegroundColor White
+			 Write-Host "#                                                Capture Support Dump                                                       #" -ForegroundColor White
+			 Write-Host "#############################################################################################################################`n" -ForegroundColor White
 			 
 			 $sshcapture = 'source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-support-capture > /dev/null 2>&1 &'
 			 $sshpurge = 'sudo find /core/capture/Capture*.tgz -maxdepth 1 -type f -exec rm -fv {} \;'
@@ -1307,8 +1343,106 @@ function Test-Net-Connection($destination)  {
 	}
 	
  }
+
+function Upload-Report-Files{
+	
+	Clear-Host
+	 
+	Write-Host "`n#############################################################################################################################"  -ForegroundColor White
+    Write-Host "#                                                   Upload Report Files                                                       #" -ForegroundColor White
+    Write-Host "#############################################################################################################################`n" -ForegroundColor White
  
- function Get-Update-Manager{
+	#Load Requşred Modules
+	Load-Modules
+	 
+	# Define Server Name
+	$SFTPServer = "hprc-h2.it.hpe.com"
+	$SFTPServerPort = "2222"
+
+	# Set local file path and SFTP path
+	$SftpPath = "/"
+	$ReportDirPath= "$PSScriptRoot\Reports"
+
+	# SFTP Server Credential File
+	$SFTPCredFile = "$PSScriptRoot\sftp-cred.XML"
+
+	try {
+			
+		$Global:ProgressPreference = 'SilentlyContinue'
+		$SFTPconnection = Test-NetConnection -Port 2222 -ComputerName $SFTPServer -ErrorAction stop -WarningAction Stop
+
+		Write-Host "`nMessage: TCP Port Connection to $($SFTPServer) Test Success..." -ForegroundColor Green
+		$Global:ProgressPreference = 'Continue'
+				
+	} catch {
+			
+		Write-Host "`nMessage: TCP Port Connection to $($SFTPServer) Test Failed, Check Firewall or Network Infrastructure !!!" -ForegroundColor Red
+		$Global:ProgressPreference = 'Continue'
+		Break
+				
+	}
+
+	# Check if the credential file already exists
+	if (-Not (Test-Path $SFTPCredFile)) {
+		# Prompt the user for credentials
+		Get-Credential -Message 'Enter HPE SFTP Server Credential' | Export-Clixml $SFTPCredFile 
+		Write-Host "Credentials saved to $SFTPCredFile ."
+			 
+	} else {
+		Write-Host "The credential file $SFTPCredFile already exists. No action taken..." -ForegroundColor Green
+			 
+	}
+
+	#Import Credential File
+	$SFTPCred = Import-CLIXML $SFTPCredFile
+		
+	if(Test-Path -Path $ReportDirPath)
+	{
+		# lists directory files into variable
+		$ReportsFilePath = get-childitem $ReportDirPath 
+
+		try {
+			
+			# Establish the SFTP connection
+			Write-Host "Trying to establish connection to the $($SFTPServer)... " -ForegroundColor Yellow
+			$SFTPSession = New-SFTPSession -ComputerName $SFTPServer -Credential $SFTPCred  -ConnectionTimeout 60 -Port $SFTPServerPort -Force -ErrorAction Stop
+			Write-Host "SFTP Connection to $($SFTPServer) Successfully Established..." -ForegroundColor Green 
+			$CaptureSFTPSession = Get-SFTPSession | Where-Object { $_.Host -like "$($SFTPServer)" }  | Select-Object SessionId
+		
+		} catch {
+			
+			 Write-Host "`nSFTP Connection to $($SFTPServer) Failed !!! `n" -ForegroundColor Red
+			 Break
+			
+		}
+		
+		try {
+			
+			Write-Host "`nUpload Report Files To The HPE SFTP Server... " 
+			# Action for each file within the $filepath variable copies them to the SFTP server
+			ForEach ($LocalFile in $ReportsFilePath)
+			{
+			   Write-Host "Upload $global:ReportDirPath\$LocalFile ..." 
+			   Set-SFTPItem -SessionId $CaptureSFTPSession.SessionID -Path "$ReportDirPath\$LocalFile" -Destination $SftpPath -Force -ErrorAction Stop
+			}
+			
+			Write-Host "`nUploaded Report Files Successfully... `n" -ForegroundColor Green
+
+		} catch {
+			
+			 Write-Host "Can Not Upload Report File Successfully: $ReportDirPath\$LocalFile !!! `n" -ForegroundColor Red
+
+		} finally{	
+            Remove-SFTPSession -SessionId $CaptureSFTPSession.SessionID | Out-Null	
+		}
+		
+	}else{
+		Write-Host "Repors Directory Does Not Exists !!! `n" -f Red
+	}
+  
+}
+ 
+function Get-Update-Manager{
 	 
 	 # Define Report Date
 	 $reportdate = get-date -Format "dddd dd/MM/yyyy HH:mm"
@@ -1316,7 +1450,7 @@ function Test-Net-Connection($destination)  {
 	 #Log Timestamp
 	 $logtimestamp = get-date -UFormat "%m-%d-%YT%R" | ForEach-Object { $_ -replace ":", "." }
 	 
-	 #Clear-Host
+	 Clear-Host
 	 
 	 try {
 		 
@@ -1329,9 +1463,9 @@ function Test-Net-Connection($destination)  {
 		  # Start a transcript log
 		  Start-Transcript -Path $UpdateManagerReportFile 
 						 
-		  Write-Host "`n#################################################################################################"
-		  Write-Host "#        HPE Update Manager Host $($osInfo.CSName) System Requirements Check Report                "
-		  Write-Host "#################################################################################################`n"
+		  Write-Host "#############################################################################################################################" -ForegroundColor Yellow
+		  Write-Host "#                      HPE Update Manager Host $($osInfo.CSName) System Requirements Check Report                            "
+		  Write-Host "#############################################################################################################################`n" -ForegroundColor Yellow
  
 		  Write-Host "`nReport Creation Date: $($reportdate)" 
 		  Write-Host "Customer Name:        $($global:customername)" 	
