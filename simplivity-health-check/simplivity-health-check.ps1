@@ -69,6 +69,9 @@ function Load-Modules {
 		 Write-Host "Copying Modules to C:\Users\$($Env:UserName)\Documents\WindowsPowerShell\Modules Directory.. " -ForegroundColor Yellow
 		 Copy-Item -Path "$PSScriptRoot\PowerShell-Modules\*" -Destination "C:\Users\$($Env:UserName)\Documents\WindowsPowerShell\Modules" -Recurse -ErrorVariable capturedErrors -ErrorAction SilentlyContinue
 		 $capturedErrors | foreach-object { if ($_ -notmatch "already exists") { write-error $_ } }
+		 Get-ChildItem -Path "C:\Users\$Env:UserName\Documents\WindowsPowerShell\Modules\*" -Recurse | Unblock-File
+         Set-PowerCLIConfiguration -Scope User -ParticipateInCEIP $true 
+
 		 
 		 Write-Host "Loading modules :  HPESimpliVity ,VMware.PowerCLIs, Posh-SSH " -ForegroundColor Yellow
 		 Import-Module HPESimpliVity, VMware.PowerCLI, Posh-SSH
