@@ -70,8 +70,7 @@ function Load-Modules {
 		 Copy-Item -Path "$PSScriptRoot\PowerShell-Modules\*" -Destination "C:\Users\$($Env:UserName)\Documents\WindowsPowerShell\Modules" -Recurse -ErrorVariable capturedErrors -ErrorAction SilentlyContinue
 		 $capturedErrors | foreach-object { if ($_ -notmatch "already exists") { write-error $_ } }
 		 Get-ChildItem -Path "C:\Users\$Env:UserName\Documents\WindowsPowerShell\Modules\*" -Recurse | Unblock-File
-         Set-PowerCLIConfiguration -Scope User -ParticipateInCEIP $true 
-
+         Set-PowerCLIConfiguration -Scope User -ParticipateInCEIP $False -Confirm:$false | Out-Null
 		 
 		 Write-Host "Loading modules :  HPESimpliVity ,VMware.PowerCLIs, Posh-SSH " -ForegroundColor Yellow
 		 Import-Module HPESimpliVity, VMware.PowerCLI, Posh-SSH
@@ -495,12 +494,9 @@ function Test-Net-Connection($destination)  {
 			 Write-Host "Company Name:         $($global:companyname)`n" 
 
 			 Write-Host "`n### VMWare Virtual Center  ###" -ForegroundColor White
-			 # Get vCenter Server version
-			 $vCenterInfo = Get-VIServer $global:vCenterServer -Credential $global:Cred | Select-Object -Property Version, Build, Name
-			 
-			 Write-Host "`nvCenter Server Name:             $($vCenterInfo.Name)"
-			 Write-Host "vCenter Server Version:          $($vCenterInfo.Version)"
-			 Write-Host "vCenter Server Build Number:     $($vCenterInfo.Build)"
+			 Write-Host "`nvCenter Server Name:             $($VMWareVcenter.Name)"
+			 Write-Host "vCenter Server Version:          $($VMWareVcenter.Version)"
+			 Write-Host "vCenter Server Build Number:     $($VMWareVcenter.Build)"
 			 
 			 Write-Host "`n### SVT Cluster State ###" -ForegroundColor White
 			 
