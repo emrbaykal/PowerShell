@@ -654,7 +654,7 @@ function Test-Net-Connection($destination)  {
              $HostErrors= $VMHostStatus  | Where-Object {$_.OverallStatus -ne "Green" -and $_.TriggeredAlarmState -ne $null} 
 
              if ($HostErrors){
-	             foreach ($hosterror in $HostErrors){
+	             foreach ($HostError in $HostErrors){
 		              foreach($alarm in $HostError.TriggeredAlarmState){
 			              $Hprops = @{
 			              'Simplivity Host (ESXI)' = $HostError.Name
@@ -668,13 +668,13 @@ function Test-Net-Connection($destination)  {
 
 			 Write-Host "### Simplivity Hosts (ESXI) Active Alarms ###" -ForegroundColor White
              if ($VMHAlarmReport){
-                  $VMHAlarmRepor | Format-Table -Property 'SVT Host', 'Over All Status', 'Triggered Alarms'
+                  $VMHAlarmReport | Format-Table -Property 'Simplivity Host (ESXI)', 'Over All Status', 'Triggered Alarms'
              }else{
-                  Write-Host "`nNo Active Alert Found On SVT (ESXI) Host...  `n" 
+                  Write-Host "`nNo Active Alert Found On SVT (ESXI) Hosts..." 
 		     }
 			 
 			 # Display Datacenter Balance State
-			 Write-Host "### Datacenter Resource Balancing State ###`n" -ForegroundColor White
+			 Write-Host "`n### Datacenter Resource Balancing State ###`n" -ForegroundColor White
              $SvtBalanceCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-balance-show --shownodeip --consumption --showHiveName"	
 			 $SvtBalance = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtBalanceCmd -TimeOut 60
 			 $SvtBalance.Output	 
@@ -923,6 +923,31 @@ function Test-Net-Connection($destination)  {
 					 $memusage = 1
 				 }
 				 
+				 ## SVT Host Alarms
+                 $SVTAlarmReport = @()
+                 $SVTHostStatus = (Get-VMHost -Name $svthost.name | Get-View) | Select-Object Name,OverallStatus,ConfigStatus,TriggeredAlarmState
+                 $SVTHostErrors= $SVTVMHostStatus  | Where-Object {$_.OverallStatus -ne "Green" -and $_.TriggeredAlarmState -ne $null} 
+
+                if ($SVTHostErrors){
+	                foreach ($SVTHostError in $SVTHostErrors){
+		                 foreach($svtalarm in $SVTHostError.TriggeredAlarmState){
+			                 $SVTHprops = @{
+			                 'Simplivity Host (ESXI)' = $SVTHostError.Name
+			                 'Over All Status' = $SVTHostError.OverallStatus
+			                 'Triggered Alarms' = (Get-AlarmDefinition -Id $svtalarm.alarm).Name
+			                 }
+			                 [array]$SVTAlarmReport += New-Object PSObject -Property $SVTHprops
+		                 }
+	                }
+	             }
+
+			     Write-Host "### SVT Host $($svthost.name) Active Alarms ###" -ForegroundColor White
+                 if ($SVTAlarmReport){
+                      $SVTAlarmReport | Format-Table -Property 'Simplivity Host (ESXI)', 'Over All Status', 'Triggered Alarms'
+                 }else{
+                      Write-Host "`nNo Active Alert Found On $($svthost.name)..." 
+		         }
+				 
 				 Write-Host "`n# SVT Host $($svthost.name) Hardware State  #" -ForegroundColor White
 				 $hosthwinfo = Get-SvtHardware -Hostname $svthost.name -Raw | ConvertFrom-Json 
 				 
@@ -1005,6 +1030,32 @@ function Test-Net-Connection($destination)  {
 				$ServiceState = Invoke-SSHcommand -SessionId $OVCSession.SessionID -Command $ServiceStateCmd -TimeOut 60
 				Write-Host "`n# Omnistack Vrutal Controller $($svthost.virtual_controller_name) Host Status Of All Managed Services. #`n" -ForegroundColor White
 				$ServiceState.Output
+				
+				## Omnistack Virtual Controller Active Alarms
+                $OVCAlarmReport = @()
+                $OVCStatus = (Get-VM -Name $svthost.virtual_controller_name | Get-View) | Select-Object Name,OverallStatus,ConfigStatus,TriggeredAlarmState
+                $OVCErrors = $VMStatus  | Where-Object {$_.OverallStatus -ne "Green"}
+
+                if ($OVCErrors) {
+                      foreach ($OVCError in $OVCErrors){
+                          foreach ($OVCTriggeredAlarm in $OVCError.TriggeredAlarmstate) {
+                                $OVCprops = @{
+                                  'Over All Status' = $OVCError.OverallStatus
+								  'Acknowledged' = $OVCTriggeredAlarm.Acknowledged
+                                  'Triggered Alarms' = (Get-AlarmDefinition -Id $OVCTriggeredAlarm.Alarm).Name
+								  'Triggered Alarm Time' = $OVCTriggeredAlarm.Time
+                                }
+                            [array]$OVCAlarms += New-Object PSObject -Property $OVCprops
+                          }
+                     }
+                }
+
+                Write-Host "`n### Omnistack Virtual Controller $($svthost.virtual_controller_name) Active Alarms ###" -ForegroundColor White
+                if ($OVCAlarms){
+	                $OVCAlarms | Format-Table -Property 'Over All Status', 'Acknowledged', 'Triggered Alarms', 'Triggered Alarm Time'
+                }else{
+	                Write-Host "`nNo Active Alerts Found On Virtual Machines...  `n"
+                }
 				 
 				# Remove OVC SSH Sessşon
 			    Remove-SSHSession -SessionId $OVCSession.SessionID | Out-Null
@@ -1052,10 +1103,7 @@ function Test-Net-Connection($destination)  {
 				 Write-Host "`n"
 			 }	 
  
-             
-			 
-			 
- 
+      
 			 Write-Host "`n#############################################################################################################################" -ForegroundColor Yellow
 			 Write-Host "#                                                Capture Balance File                                                       #" -ForegroundColor Yellow
 			 Write-Host "#############################################################################################################################`n" -ForegroundColor Yellow
