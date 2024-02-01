@@ -59,21 +59,22 @@ Write-Host "* If you want to check update manager host requirements met:        
 
 function Load-Modules {
 	
-	 #Load HPESimpliVity , VMware.PowerCLI, Posh-SSH
+	 #Load HPESimpliVity , VMware.VimAutomation.Core, Posh-SSH
 	 Write-Host "Checking PowerShell Modules That Should Be loaded... "
 	 $InstalledModule = Get-Module -ListAvailable
 	 $ModuleNames = $InstalledModule.Name
  
-	 if(-not($ModuleNames -like "HPESimpliVity") -or -not($ModuleNames -like "VMware.PowerCLI") -or -not($ModuleNames -like "Posh-SSH"))
+	 if(-not($ModuleNames -like "HPESimpliVity") -or -not($ModuleNames -like "VMware.VimAutomation.Core") -or -not($ModuleNames -like "Posh-SSH"))
 	 {
 		 Write-Host "Copying Modules to C:\Users\$($Env:UserName)\Documents\WindowsPowerShell\Modules Directory.. " -ForegroundColor Yellow
+		 New-Item -ItemType Directory "C:\Users\$($Env:UserName)\Documents\WindowsPowerShell\Modules"  | Out-Null 
 		 Copy-Item -Path "$PSScriptRoot\PowerShell-Modules\*" -Destination "C:\Users\$($Env:UserName)\Documents\WindowsPowerShell\Modules" -Recurse -ErrorVariable capturedErrors -ErrorAction SilentlyContinue
 		 $capturedErrors | foreach-object { if ($_ -notmatch "already exists") { write-error $_ } }
 		 Get-ChildItem -Path "C:\Users\$Env:UserName\Documents\WindowsPowerShell\Modules\*" -Recurse | Unblock-File
          Set-PowerCLIConfiguration -Scope User -ParticipateInCEIP $False -Confirm:$false | Out-Null
 		 
-		 Write-Host "Loading modules :  HPESimpliVity ,VMware.PowerCLIs, Posh-SSH " -ForegroundColor Yellow
-		 Import-Module HPESimpliVity, VMware.PowerCLI, Posh-SSH
+		 Write-Host "Loading modules :  HPESimpliVity ,VMware.VimAutomation.Core, Posh-SSH " -ForegroundColor Yellow
+		 Import-Module HPESimpliVity, VMware.VimAutomation.Core, Posh-SSH
 		 
 		 if(($(Get-Module -Name "HPESimpliVity")  -eq $null))
 		 {
@@ -84,10 +85,10 @@ function Load-Modules {
 			 break
 		 }
  
-		 if(($(Get-Module -Name "VMware.PowerCLI")  -eq $null))
+		 if(($(Get-Module -Name "VMware.VimAutomation.Core")  -eq $null))
 		 {
 			 Write-Host ""
-			 Write-Host "VMware.PowerCLI module cannot be loaded. Please fix the problem and try again" -ForegroundColor Red
+			 Write-Host "VMware.VimAutomation.Core module cannot be loaded. Please fix the problem and try again" -ForegroundColor Red
 			 Write-Host ""
 			 Write-Host "Exit..."
 			 break
@@ -106,11 +107,11 @@ function Load-Modules {
  
 	 else
 	 {
-		 Write-Host "Loading modules :  HPESimpliVity ,VMware.PowerCLIs, Posh-SSH " -ForegroundColor Yellow
-		 Import-Module HPESimpliVity, VMware.PowerCLI, Posh-SSH
+		 Write-Host "Loading modules :  HPESimpliVity ,VMware.VimAutomation.Core, Posh-SSH " -ForegroundColor Yellow
+		 Import-Module HPESimpliVity, VMware.VimAutomation.Core, Posh-SSH
 		 
 		 $InstalledSimplivityModule  =  Get-Module -Name "HPESimpliVity"
-		 $InstalledVmwareModule  =  Get-Module -Name "VMware.PowerCLI"
+		 $InstalledVmwareModule  =  Get-Module -Name "VMware.VimAutomation.Core"
 		 $InstalledPoshSSHModule  =  Get-Module -Name "Posh-SSH"
 		 
 		 if(($(Get-Module -Name "HPESimpliVity")  -eq $null))
@@ -122,10 +123,10 @@ function Load-Modules {
 			 break
 		 }
  
-		 if(($(Get-Module -Name "VMware.PowerCLI")  -eq $null))
+		 if(($(Get-Module -Name "VMware.VimAutomation.Core")  -eq $null))
 		 {
 			 Write-Host ""
-			 Write-Host "VMware.PowerCLI module cannot be loaded. Please fix the problem and try again" -ForegroundColor Red
+			 Write-Host "VMware.VimAutomation.Core module cannot be loaded. Please fix the problem and try again" -ForegroundColor Red
 			 Write-Host ""
 			 Write-Host "Exit..."
 			 break
@@ -479,6 +480,7 @@ function Test-Net-Connection($destination)  {
 			 $arbiterconnected = $null
 			 $storagefreestate = $null
 			 $vmclsstate = $null
+			 $shutdownstatecheck = $null
 			 $CLSReportFile = "$($global:ReportDirPath)\$($clusterstate.omnistack_clusters[0].name)-$($logtimestamp).log"
  
 			 # Start a transcript log For Cluster State
@@ -630,6 +632,14 @@ function Test-Net-Connection($destination)  {
 			 foreach ($HostDetail in $hostlist) {
 					 $EsxiPercentCpu = $(($HostDetail.CpuUsageMhz / $HostDetail.CpuTotalMhz ) * 100).ToString("F0")
 					 $EsxiPercentMem = $(($HostDetail.MemoryUsageGB / $HostDetail.MemoryTotalGB ) * 100).ToString("F0")
+					 $getshutdownstate = Get-SvtShutdownStatus -Hostname $HostDetail.ExtensionData.Name | Select-Object ShutdownStatus
+					 
+					 if ($getshutdownstate.ShutdownStatus -eq 'NONE') {
+				            $ShutdownState = 'False'
+			         }else {
+				            $ShutdownState = 'Wait For Shutdown'
+				            $shutdownstatecheck = 1
+			         }
 						 
 					 $HostInfo = New-Object PSObject -Property @{
 							 'Name' = $HostDetail.ExtensionData.Name
@@ -637,6 +647,7 @@ function Test-Net-Connection($destination)  {
 							 'PowerState' = $HostDetail.PowerState
 							 'OverallStatus' = $HostDetail.ExtensionData.Summary.OverallStatus
 							 'RebootRequired' = $HostDetail.ExtensionData.Summary.RebootRequired
+							 'ShutdownState' = $ShutdownState
 							 'NumCpu' = $HostDetail.NumCpu
 							 'CpuUsage %' = $EsxiPercentCpu
 							 'MemoryUsage %' = $EsxiPercentMem
@@ -646,7 +657,7 @@ function Test-Net-Connection($destination)  {
 			 }
 			 # Display Detail of SVT Host to the table
 			 Write-Host "`n### Simplivity (ESXI) Hosts List ###" -ForegroundColor White
-			 $HostTable | Sort -Property 'CpuUsage %', 'MemoryUsage %' | Format-Table -Property 'Name', 'ConnectionState', 'PowerState', 'OverallStatus', 'RebootRequired', 'NumCpu', 'CpuUsage %', 'MemoryUsage %', 'Version' | Format-Table -AutoSize
+			 $HostTable | Sort -Property 'CpuUsage %', 'MemoryUsage %' | Format-Table -Property 'Name', 'ConnectionState', 'PowerState', 'OverallStatus', 'RebootRequired', 'ShutdownState', 'NumCpu', 'CpuUsage %', 'MemoryUsage %', 'Version' | Format-Table -AutoSize
 			 
 			 ## SVT Host Alarms
              $VMHAlarmReport = @()
@@ -724,7 +735,7 @@ function Test-Net-Connection($destination)  {
 			 $BackupRulesTable | Format-Table -Property 'Policy Name', 'Backup Days', 'Rule Number', 'Destination', 'External Store Name', 'Frequency - Hours', 'Expiration Time - Day'
 
              # Displays information about the backups queued for replication on the backup state machine
-			 Write-Host "# Backups Queued For Replication On The Backup State Machine #`n" -ForegroundColor White
+			 Write-Host "### Backups Queued For Replication On The Backup State Machine ###`n" -ForegroundColor White
 			 $SvtBackupQueueCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/dsv/dsv-backup-util --operation state-info"
 			 $SvtBackupQueue = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtBackupQueueCmd  -TimeOut 60
 			 if ($SvtBackupQueue.Output) {
@@ -777,8 +788,37 @@ function Test-Net-Connection($destination)  {
             if ($VMAlarms){
 	             $VMAlarms | Format-Table -Property 'Virtual Machine Name', 'Over All Status', 'Triggered Alarms'
             }else{
-	             Write-Host "`nNo Active Alerts Found On Virtual Machines...  `n"
+	             Write-Host "`nNo Active Alerts Found On Virtual Machines... "
             }
+			 
+
+            # Snapshot Report
+			$snapshotdays = "3"
+            $Snapshotdate = (Get-Date).AddDays(-$snapshotdays)
+            $VMSnapshotReport = @()
+            $SnapshotCmd  = Get-Cluster -Name $clusterstate.omnistack_clusters[0].name | Get-VM | get-snapshot
+            $SnapshotDateReport = $SnapshotCmd | Select-Object vm, name,created,description | Where-Object {$_.created -lt $Snapshotdate}
+
+            if ($SnapshotDateReport){
+                foreach ($snapshot in $SnapshotDateReport) {
+		             $SnapInfo = New-Object PSObject -Property @{
+			            'VM Name' = $snapshot.vm
+			            'Snapshot Name' = $snapshot.name
+			            'Snapshot Creation Date' = $snapshot.created
+			            'Snapshot Description' = $snapshot.description 
+		            }
+			        $VMSnapshotReport += $SnapInfo
+	            }
+            }
+
+            Write-Host "`n### Snapshots Older Than $($snapshotdays) Days ###" -ForegroundColor White
+            if ($SnapshotDateReport) {
+                $VMSnapshotReport | Format-Table -Property 'VM Name', 'Snapshot Name', 'Snapshot Creation Date', 'Snapshot Description'
+            }
+            else {
+                Write-Host "`nNo Snapshots older than $($snapshotdays)" 
+            }
+			 
 			 
 			 # Get VM Replicaset State
 			 Write-Host "`n### The Information Of VM Replicasets ###" -ForegroundColor White
@@ -795,7 +835,7 @@ function Test-Net-Connection($destination)  {
              # Remove OVC SSH Sessşon
 			 Remove-SSHSession -SessionId $SSHOVCSession.SessionID | Out-Null
  
-			 if ($upgradestate -eq $null -and $memberscount -eq $null -and $arbiterconfigured -eq $null -and $arbiterconnected -eq $null -and $storagefreestate -eq $null -and $vmreplicasetdegreded.Count -eq 0 -and $vmclsstate -eq $null) {
+			 if ($upgradestate -eq $null -and $memberscount -eq $null -and $arbiterconfigured -eq $null -and $arbiterconnected -eq $null -and $storagefreestate -eq $null -and $vmreplicasetdegreded.Count -eq 0 -and $vmclsstate -eq $null -and $shutdownstatecheck -eq $null) {
 					 Write-Host "`nMessage: The status of the cluster ($($clusterstate.omnistack_clusters[0].name)) is consistent and you can continue to upgrade .... " -ForegroundColor Green
 			 } else {
 				 
@@ -822,6 +862,9 @@ function Test-Net-Connection($destination)  {
 				 if ($vmclsstate) {
 				 Write-Host "`nError Message: There are some errors or warnings in the cluster, check cluster state !!!"  -ForegroundColor yellow
 				 }
+				 if ($shutdownstatecheck) {
+	             Write-Host "`nError Message: Some Of SVT Hosts State are in SHUTDOWN STATE !!!"  -ForegroundColor  Red
+                 }	
 			 }
 		  
 			 Stop-Transcript
@@ -842,9 +885,6 @@ function Test-Net-Connection($destination)  {
 				 $raidbatteryhwstate = $null
 				 $cpuusage = $null
 				 $memusage = $null
-				 $shutdownstate = $null
-				 # Get SVT Host Shutdown State
-				 $getshutdownstate = Get-SvtShutdownStatus -Hostname  $svthost.name | Select-Object ShutdownStatus  
 				 # Get ESXI Host Infromation
 				 $esxihost = Get-VMHost -Name $svthost.name  | Select-Object -Property NumCpu, CpuTotalMhz, CpuUsageMhz, MemoryTotalGB, MemoryUsageGB, Version, Build 
 				 $percentCpu = $(($esxihost.CpuUsageMhz / $esxihost.CpuTotalMhz ) * 100).ToString("F0")
@@ -886,13 +926,7 @@ function Test-Net-Connection($destination)  {
 				 }else {
 					 Write-Host "SVT Host State:              $($svthost.state)" -ForegroundColor Red
 					 $hostconnectivity = 1
-				 }
-                 if ($getshutdownstate.ShutdownStatus -eq 'NONE') {
-					 Write-Host "SVT Shutdown State:          $($getshutdownstate.ShutdownStatus )" 
-				 }else {
-					 Write-Host "SVT Shutdown State:          $($getshutdownstate.ShutdownStatus )" -ForegroundColor Red
-					 $shutdownstate = 1
-				 }               
+				 }   
 				 Write-Host "SVT Host Model:              $($svthost.model)"
 				 if ($svthost.version -eq $clusterstate.omnistack_clusters[0].version) {
 					 Write-Host "SVT Host Version:            $($svthost.version)"
@@ -941,14 +975,14 @@ function Test-Net-Connection($destination)  {
 	                }
 	             }
 
-			     Write-Host "### SVT Host $($svthost.name) Active Alarms ###" -ForegroundColor White
+			     Write-Host "`n# SVT Host - $($svthost.name) Active Alarms #" -ForegroundColor White
                  if ($SVTAlarmReport){
                       $SVTAlarmReport | Format-Table -Property 'Simplivity Host (ESXI)', 'Over All Status', 'Triggered Alarms'
                  }else{
                       Write-Host "`nNo Active Alert Found On $($svthost.name)..." 
 		         }
 				 
-				 Write-Host "`n# SVT Host $($svthost.name) Hardware State  #" -ForegroundColor White
+				 Write-Host "`n# SVT Host - $($svthost.name) Hardware State  #" -ForegroundColor White
 				 $hosthwinfo = Get-SvtHardware -Hostname $svthost.name -Raw | ConvertFrom-Json 
 				 
 				 Write-Host "`nModel Number:                $($hosthwinfo.host.model_number)"
@@ -976,7 +1010,7 @@ function Test-Net-Connection($destination)  {
 				 }
 				 
 				 
-				 Write-Host "`n# SVT Host $($svthost.name) Disk State #" -ForegroundColor White
+				 Write-Host "`n# SVT Host - $($svthost.name) Disk State #" -ForegroundColor White
 				 $hostdisktstate = Get-SvtDisk -Hostname $svthost.name | Where-Object Health -ne HEALTHY
 				 $hostdiskinfo = Get-SvtDisk -Hostname $svthost.name | Select-Object SerialNumber, Manufacturer, ModelNumber, Health, RemainingLife, CapacityTB, Slot
 				 $diskTable = $hostdiskinfo | ForEach-Object {
@@ -994,7 +1028,7 @@ function Test-Net-Connection($destination)  {
 				 $diskTable | Format-Table -AutoSize
 				 
 		
-				Write-Host "`n# Omnistack Vrutal Controller $($svthost.virtual_controller_name) Net State #" -ForegroundColor White
+				Write-Host "`n# Omnistack Virutal Controller - $($svthost.virtual_controller_name) Network State #" -ForegroundColor White
 				 # Create OVC Host IP Table
 				$ovchosttable = $svthost| ForEach-Object {
 					 [PSCustomObject]@{
@@ -1013,22 +1047,22 @@ function Test-Net-Connection($destination)  {
 					
 				# Display Network Interface States
 				$NetState = Invoke-SSHcommand -SessionId $OVCSession.SessionID -Command $NetStateCmd -TimeOut 60
-				Write-Host "`n# Omnistack Vrutal Controller $($svthost.virtual_controller_name) Network Interface State #`n" -ForegroundColor White
+				Write-Host "`n# Omnistack Virutal Controller - $($svthost.virtual_controller_name) Network Interface State #`n" -ForegroundColor White
 				$NetState.Output
 				   
 				# Display Network Test Results
 				$NetTest = Invoke-SSHcommand -SessionId $OVCSession.SessionID -Command $NetTestCmd -TimeOut 60
-				Write-Host "`n# Omnistack Vrutal Controller $($svthost.virtual_controller_name) Network Connectivity Test #`n" -ForegroundColor White
+				Write-Host "`n# Omnistack Virutal Controller - $($svthost.virtual_controller_name) Network Connectivity Test #`n" -ForegroundColor White
 				$NetTest.Output
 			
 			    # Retrieves the sync status of this HPE OmniStack host from CfgDB.
 				$cfgdbstate = Invoke-SSHcommand -SessionId $OVCSession.SessionID -Command $cfgdbstateCmd -TimeOut 60
-				Write-Host "`n# Omnistack Vrutal Controller $($svthost.virtual_controller_name) CfgDB Sync Status #`n" -ForegroundColor White
+				Write-Host "`n# Omnistack Virutal Controller - $($svthost.virtual_controller_name) CfgDB Sync Status #`n" -ForegroundColor White
 				$cfgdbstate.Output
 				
 				# Display Service States
 				$ServiceState = Invoke-SSHcommand -SessionId $OVCSession.SessionID -Command $ServiceStateCmd -TimeOut 60
-				Write-Host "`n# Omnistack Vrutal Controller $($svthost.virtual_controller_name) Host Status Of All Managed Services. #`n" -ForegroundColor White
+				Write-Host "`n# Omnistack Virutal Controller - $($svthost.virtual_controller_name) Host Status Of All Managed Services. #`n" -ForegroundColor White
 				$ServiceState.Output
 				
 				## Omnistack Virtual Controller Active Alarms
@@ -1050,52 +1084,49 @@ function Test-Net-Connection($destination)  {
                      }
                 }
 
-                Write-Host "`n### Omnistack Virtual Controller $($svthost.virtual_controller_name) Active Alarms ###" -ForegroundColor White
+                Write-Host "`n# Omnistack Virtual Controller - $($svthost.virtual_controller_name) Active Alarms #" -ForegroundColor White
                 if ($OVCAlarms){
 	                $OVCAlarms | Format-Table -Property 'Over All Status', 'Acknowledged', 'Triggered Alarms', 'Triggered Alarm Time'
                 }else{
-	                Write-Host "`nNo Active Alerts Found On Virtual Machines...  `n"
+	                Write-Host "`nNo Active Alerts Found On Omnistack Virtual Controller...  `n"
                 }
 				 
 				# Remove OVC SSH Sessşon
 			    Remove-SSHSession -SessionId $OVCSession.SessionID | Out-Null
 		    
-				 if ($hostconnectivity -eq $null -and $hostupgradestate -eq $null -and $hostdisktstate -eq $null -and $hostversion -eq $null -and $hwstate -eq $null -and $raidhwstate -eq $null -and $raidbatteryhwstate -eq $null -and $cpuusage -eq $null -and $memusage -eq $null -and $shutdownstate -eq $null) {
-						 Write-Host "`nMessage: The status of the SVT Host ( $($svthost.name) ) is consistent and you can continue to upgrade ....`n" -ForegroundColor Green
+				 if ($hostconnectivity -eq $null -and $hostupgradestate -eq $null -and $hostdisktstate -eq $null -and $hostversion -eq $null -and $hwstate -eq $null -and $raidhwstate -eq $null -and $raidbatteryhwstate -eq $null -and $cpuusage -eq $null -and $memusage -eq $null) {
+						 Write-Host "`nMessage: The status of the SVT Host - ( $($svthost.name) ) is consistent and you can continue to upgrade ....`n" -ForegroundColor Green
 				 
 				 } else {
 					 
-					 Write-Host "`nMessage: SVT Host ( $($svthost.name) status is not consistent and should fix error states !!! `n" -ForegroundColor Red
+					 Write-Host "`nMessage: SVT Host - ( $($svthost.name) status is not consistent and should fix error states !!! `n" -ForegroundColor Red
 					 
 					 if ($hostconnectivity) {
-					 Write-Host "Error Message: SVT Host ( $($svthost.name) State Not Alive !!!"  -ForegroundColor Red
+					 Write-Host "Error Message: SVT Host - ( $($svthost.name) State Not Alive !!!"  -ForegroundColor Red
 					 }
 					 if ($hostupgradestate) {
-					 Write-Host "Error Message: SVT Host ( $($svthost.name) Update status not in the expected state !!! "  -ForegroundColor Red
+					 Write-Host "Error Message: SVT Host - ( $($svthost.name) Update status not in the expected state !!! "  -ForegroundColor Red
 					 }
 					 if ($hostdisktstate) {
-					 Write-Host "Error Message: Detection of faulty discs on the SVT host ( $($svthost.name) , opening of a support case !!!"  -ForegroundColor Red
+					 Write-Host "Error Message: Detection of faulty discs on the SVT host - ( $($svthost.name) , opening of a support case !!!"  -ForegroundColor Red
 					 }
 					 if ($hostversion) {
-					 Write-Host "Error Message: Incompatible software version actively running on SVT host ( $($svthost.name)  !!!"  -ForegroundColor Red
+					 Write-Host "Error Message: Incompatible software version actively running on SVT host - ( $($svthost.name)  !!!"  -ForegroundColor Red
 					 }
 					 if ($hwstate) {
-					 Write-Host "Error Message: Detection of faulty hardware component on the SVT host ( $($svthost.name) , opening of a support case !!!"  -ForegroundColor Red
+					 Write-Host "Error Message: Detection of faulty hardware component on the SVT host - ( $($svthost.name) , opening of a support case !!!"  -ForegroundColor Red
 					 }
 					 if ($raidhwstate) {
-					 Write-Host "Error Message: Detection of faulty raid card on the SVT host ( $($svthost.name) , opening of a support case !!!"  -ForegroundColor Red
+					 Write-Host "Error Message: Detection of faulty raid card on the SVT host - ( $($svthost.name) , opening of a support case !!!"  -ForegroundColor Red
 					 }
 					 if ($raidbatteryhwstate) {
-					 Write-Host "Error Message: Detection of faulty raid card battery on the SVT host ( $($svthost.name) , opening of a support case !!!"  -ForegroundColor Red
+					 Write-Host "Error Message: Detection of faulty raid card battery on the SVT host - ( $($svthost.name) , opening of a support case !!!"  -ForegroundColor Red
 					 }
 					 if ($cpuusage) {
-					 Write-Host "Error Message: High CPU usage detected on the SVT host ( $($svthost.name) !!!"  -ForegroundColor yellow
+					 Write-Host "Error Message: High CPU usage detected on the SVT host - ( $($svthost.name) !!!"  -ForegroundColor yellow
 					 }
 					 if ($memusage) {
-					 Write-Host "Error Message: High Memory usage detected on the SVT host ( $($svthost.name) !!!"  -ForegroundColor yellow
-					 }
-					 if ($shutdownstate) {
-					 Write-Host "Error Message: Shutdown State detected on the SVT host ( $($svthost.name) !!!"  -ForegroundColor yellow
+					 Write-Host "Error Message: High Memory usage detected on the SVT host - ( $($svthost.name) !!!"  -ForegroundColor yellow
 					 }
 				 }	
  
