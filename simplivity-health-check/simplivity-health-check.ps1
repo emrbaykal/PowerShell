@@ -632,14 +632,6 @@ function Test-Net-Connection($destination)  {
 			 foreach ($HostDetail in $hostlist) {
 					 $EsxiPercentCpu = $(($HostDetail.CpuUsageMhz / $HostDetail.CpuTotalMhz ) * 100).ToString("F0")
 					 $EsxiPercentMem = $(($HostDetail.MemoryUsageGB / $HostDetail.MemoryTotalGB ) * 100).ToString("F0")
-					 $getshutdownstate = Get-SvtShutdownStatus -Hostname $HostDetail.ExtensionData.Name | Select-Object ShutdownStatus
-					 
-					 if ($getshutdownstate.ShutdownStatus -eq 'NONE') {
-				            $ShutdownState = 'False'
-			         }else {
-				            $ShutdownState = 'Wait For Shutdown'
-				            $shutdownstatecheck = 1
-			         }
 						 
 					 $HostInfo = New-Object PSObject -Property @{
 							 'Name' = $HostDetail.ExtensionData.Name
@@ -647,7 +639,6 @@ function Test-Net-Connection($destination)  {
 							 'PowerState' = $HostDetail.PowerState
 							 'OverallStatus' = $HostDetail.ExtensionData.Summary.OverallStatus
 							 'RebootRequired' = $HostDetail.ExtensionData.Summary.RebootRequired
-							 'ShutdownState' = $ShutdownState
 							 'NumCpu' = $HostDetail.NumCpu
 							 'CpuUsage %' = $EsxiPercentCpu
 							 'MemoryUsage %' = $EsxiPercentMem
@@ -657,7 +648,7 @@ function Test-Net-Connection($destination)  {
 			 }
 			 # Display Detail of SVT Host to the table
 			 Write-Host "`n### Simplivity (ESXI) Hosts List ###" -ForegroundColor White
-			 $HostTable | Sort -Property 'CpuUsage %', 'MemoryUsage %' | Format-Table -Property 'Name', 'ConnectionState', 'PowerState', 'OverallStatus', 'RebootRequired', 'ShutdownState', 'NumCpu', 'CpuUsage %', 'MemoryUsage %', 'Version' | Format-Table -AutoSize
+			 $HostTable | Sort -Property 'CpuUsage %', 'MemoryUsage %' | Format-Table -Property 'Name', 'ConnectionState', 'PowerState', 'OverallStatus', 'RebootRequired', 'NumCpu', 'CpuUsage %', 'MemoryUsage %', 'Version' | Format-Table -AutoSize
 			 
 			 ## SVT Host Alarms
              $VMHAlarmReport = @()
@@ -835,7 +826,7 @@ function Test-Net-Connection($destination)  {
              # Remove OVC SSH Sessşon
 			 Remove-SSHSession -SessionId $SSHOVCSession.SessionID | Out-Null
  
-			 if ($upgradestate -eq $null -and $memberscount -eq $null -and $arbiterconfigured -eq $null -and $arbiterconnected -eq $null -and $storagefreestate -eq $null -and $vmreplicasetdegreded.Count -eq 0 -and $vmclsstate -eq $null -and $shutdownstatecheck -eq $null) {
+			 if ($upgradestate -eq $null -and $memberscount -eq $null -and $arbiterconfigured -eq $null -and $arbiterconnected -eq $null -and $storagefreestate -eq $null -and $vmreplicasetdegreded.Count -eq 0 -and $vmclsstate -eq $null) {
 					 Write-Host "`nMessage: The status of the cluster ($($clusterstate.omnistack_clusters[0].name)) is consistent and you can continue to upgrade .... " -ForegroundColor Green
 			 } else {
 				 
@@ -862,9 +853,6 @@ function Test-Net-Connection($destination)  {
 				 if ($vmclsstate) {
 				 Write-Host "`nError Message: There are some errors or warnings in the cluster, check cluster state !!!"  -ForegroundColor yellow
 				 }
-				 if ($shutdownstatecheck) {
-	             Write-Host "`nError Message: Some Of SVT Hosts State are in SHUTDOWN STATE !!!"  -ForegroundColor  Red
-                 }	
 			 }
 		  
 			 Stop-Transcript
