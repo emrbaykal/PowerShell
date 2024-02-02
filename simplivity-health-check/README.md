@@ -20,17 +20,19 @@ AUTHOR  : Emre Baykal - HPE Services
 
 - **Support Dump Capture**: Captures and downloads dumps from OmniStack Virtual Controllers.
 
+-**Uploading report files to FTP**: Can be uploaded report files to the FTP accounts issued for the client.
+
 ## How to Use
 
 1. **Prerequisites:**
    - PowerShell v5.1 or later
    - PowerShell with administrative rights.
-   - Required Modules: HPESimpliVity, VMware.PowerCLI, Posh-SSH .
+   - Required Modules: HPESimpliVity, VMware.VimAutomation.Core, Posh-SSH .
    - VMware vCenter and SimpliVity cluster administrative credentials.
 
 2. **Installation and Setup**
-   - Install Required Modules: Install-Module -Name HPESimpliVity, VMware.PowerCLI, Posh-SSH .
-   - Script Configuration: Configure with SimpliVity and VMware vCenter details.
+   - Install Required Modules: Install-Module -Name HPESimpliVity, VMware.VimAutomation.Core, Posh-SSH.
+   - Import Installed Modules: Import-Module HPESimpliVity, VMware.VimAutomation.Core, Posh-SSH
    - Script Execution: Run in PowerShell with administrative privileges.
 
 3. **Execution:**
@@ -51,6 +53,10 @@ AUTHOR  : Emre Baykal - HPE Services
      ```powershell
      Get-Update-Manager
      ``` 
+   - If you  want to upload generated reports to the FTP accounts issued for the client.
+     ```powershell
+     Upload-Report-Files
+     ``` 
 
 4. **Script Workflow:**
    - Module Verification: Checks and loads necessary modules.
@@ -58,10 +64,14 @@ AUTHOR  : Emre Baykal - HPE Services
    - Cluster and Host Analysis: Performs checks for upgrade readiness.
    - Support Dump Management: Captures and downloads support dumps.
    - Report Generation: Creates reports in specified directories.
+   - Uploading report files to FTP Server: After the script is run, the generated reports can be uploaded to the FTP accounts issued for the client.
 
 5. **Output:**
    - The script will provide real-time console output.
-   - A detailed report file (`SVT_HCluster.log` by default) will be generated in the Reports directory.
+   - A detailed culster report file (`Cluster-Name-Date.log` by default) will be generated in the Reports directory.
+   - A detailed SVT hosts report file (`SVT-Host-Name-Date.log` by default) will be generated in the Reports directory.
+   - Replication distribution csv file (`replica_distribution_file_Cluster-Name.csv` by default) will be generated in the Reports directory.
+   - Support Dump file (`support-dump.tar` by default) will be generated in the Reports directory.
 
 6. **Troubleshooting**
    - Ensure all modules are installed and loaded.
