@@ -20,7 +20,7 @@ AUTHOR  : Emre Baykal - HPE Services
 
 - **Support Dump Capture**: Captures and downloads dumps from OmniStack Virtual Controllers.
 
--**Uploading report files to FTP**: Can be uploaded report files to the FTP accounts issued for the client.
+- **Uploading report files to FTP**: Can be uploaded report files to the FTP accounts issued for the client.
 
 ## How to Use
 
