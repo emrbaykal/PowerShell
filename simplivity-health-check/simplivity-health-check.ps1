@@ -44,6 +44,19 @@
     Date    : 01/19/2024
 	AUTHOR  : Emre Baykal - HPE Services
 #>
+$pshost = Get-Host              # Get the PowerShell Host.
+$pswindow = $pshost.UI.RawUI    # Get the PowerShell Host's UI.
+
+$newsize = $pswindow.BufferSize # Get the UI's current Buffer Size.
+$newsize.Width = 200            # Set the new buffer's width to 208 columns.
+$newsize.Height = 8000
+$pswindow.buffersize = $newsize # Set the new Buffer Size as active.
+
+$newsize = $pswindow.windowsize # Get the UI's current Window Size.
+$newsize.Width = 200            # Set the new Window Width to 208 columns.
+$newsize.Height = 50
+$pswindow.windowsize = $newsize # Set the new Window Size as active.
+
 Clear-Host
 
 Write-Host "#############################################################################################################################"  -ForegroundColor White
@@ -794,14 +807,35 @@ function Test-Net-Connection($destination)  {
 					 'VM Name         ' = $ReplicaDetail.VmName
 					 'State     ' = $ReplicaDetail.State
 					 'SVT HA Status   ' = $ReplicaDetail.HAstatus
-					 'Primary Host          ' = $ReplicaDetail.Primary
-					 'Secondary Host          ' = $ReplicaDetail.Secondary
+					 'Primary Replica Location   ' = $ReplicaDetail.Primary
+					 'Secondary Replica Location ' = $ReplicaDetail.Secondary
 				 }
 				 $ReplicaSetTable += $ReplicaInfo
 			 }
 			 # Display Detail of VM ReplicaSet to the table
-			 $ReplicaSetTable | Sort -Property 'Primary Host          ' | Format-Table -Property 'VM Name         ', 'State     ', 'SVT HA Status   ', 'Primary Host          ', 'Secondary Host          '
+			 $ReplicaSetTable | Sort -Property 'Primary Host          ' | Format-Table -Property 'VM Name         ', 'State     ', 'SVT HA Status   ', 'Primary Replica Location   ', 'Secondary Replica Location '
 			        	
+			 Write-Host "`n### SimpliVity Displaced VM List ###" -ForegroundColor White
+             foreach ($VMList in $VMDetailList) {
+                 $VMReplica = $SvtVMReplicaSet | Where-Object VmName -EQ $VMList.VmName
+                 if ($VMList.Hostname -ne $VMReplica.Primary) {
+		              $ReplicaState = New-Object PSObject -Property @{
+                          'VM Name         '              = $VMList.HostName
+                          'VM Running Host            '   = $VMList.HostName
+                          'Primary Replica Location   '   = $VMReplica.Primary
+                          'Secondary Replica Location '   = $VMReplica.Secondary
+                        }    
+	                  $ReplicaStateTable += $ReplicaState
+	            }
+            } 
+
+             if ($ReplicaStateTable) {
+                # Display Detail of Displaced VM Status to the table
+                $ReplicaStateTable | Format-Table -Property 'VM Name         ', 'VM Running Host            ', 'Primary Replica Location   ', 'Secondary Replica Location '
+             }
+             else {
+                Write-Host "`nNo Virtual Machine Detected Running Outside Of Where Their Primary Storage Is Located...`n" 
+             }
 			 
 			 # Check Degrede VM Replicasets 
 			 $vmreplicasetdegreded = $SvtVMReplicaSet | Where-Object  HAStatus -eq  DEGRADED
@@ -837,7 +871,7 @@ function Test-Net-Connection($destination)  {
 			 if ($SvtBackupQueue.Output) {
 				 $SvtBackupQueue.Output
 			 }else {
-				 Write-Host "Simplivity Backup Queue Is Empty On The Backup State Machine For Replication... `n"
+				 Write-Host "`nSimplivity Backup Queue Is Empty On The Backup State Machine For Replication... `n"
 			 }
 			 
 			 # Display Support State
