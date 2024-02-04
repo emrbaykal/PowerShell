@@ -146,16 +146,14 @@ function Load-Modules {
 		 Write-host ""
 	 }
  
-	
+
 }
 function Invoke-SVT {
 	
-	# Define the path to variable file
+	 # Define the path to variable file
 	 $InfraVariableFile = "$PSScriptRoot\infra_variable.json"
- 
 	 # Define the path to the credential file
 	 $credFile = "$PSScriptRoot\cred.XML"
-	 
 	 #Reports Directory
 	 $global:ReportDirPath= "$PSScriptRoot\Reports"
  
@@ -165,7 +163,7 @@ function Invoke-SVT {
 	 # Check if the credential file already exists
 	 if (-Not (Test-Path $InfraVariableFile)) {
 		 do {
-		 Write-Host "Please fill in the following information about customer..." -ForegroundColor Yellow
+		 Write-Host "`nPlease fill in the following information about customer..." -ForegroundColor Yellow
 		 
 		 # Define Customer Name / Enter the name of the person who administers the system.
 		 $global:customername  = Read-Host -Prompt 'Customer Name & Surname '
@@ -481,6 +479,7 @@ function Test-Net-Connection($destination)  {
 			 $storagefreestate = $null
 			 $vmclsstate = $null
 			 $shutdownstatecheck = $null
+			 $vmhastate = $null
 			 $CLSReportFile = "$($global:ReportDirPath)\$($clusterstate.omnistack_clusters[0].name)-$($logtimestamp).log"
  
 			 # Start a transcript log For Cluster State
@@ -535,7 +534,19 @@ function Test-Net-Connection($destination)  {
 			 }else {
 				 Write-Host "VMWare CLs State:                 WARRING" -ForegroundColor yellow
 				 $vmclsstate = 1
-			 }				
+			 }
+             if ($vmwarecluster.HAEnabled -eq 'True') {
+				 Write-Host "VMWare CLs HA State:              Turned ON"
+			 }else {
+				 Write-Host "VMWare CLs HA State:              Turned OFF" -ForegroundColor Red
+				 $vmhastate = 1
+			 }             
+			 if ($vmwarecluster.DrsEnabled -eq 'True') {
+				 Write-Host "VMWare CLs DRS State:             Turned ON"
+				 Write-Host "VMWare CLs DRS Automation State:  $($vmwarecluster.DrsAutomationLevel)"
+			 }else {
+				 Write-Host "VMWare CLS DRS State:             Turned OFF" -ForegroundColor yellow
+			 }			 
 			 Write-Host "VMWare CLs Num Hosts:             $($vmwarecluster.ExtensionData.Summary.NumHosts)"
 			 if ($clustercpuusage.Average -gt 80) {
 			     Write-Host "VMWare CLs Average CPU Usage:     $($clustercpuusage.Average.ToString("F2")) % (Last 24 Hours)" -ForegroundColor Yellow
@@ -549,60 +560,6 @@ function Test-Net-Connection($destination)  {
 			 }
 			 Write-Host "VMWare CLs Total VM:              $($vmwarecluster.ExtensionData.Summary.UsageSummary.TotalVmCount)"
 			 Write-Host "VMWare CLs PoweredOff VM:         $($vmwarecluster.ExtensionData.Summary.UsageSummary.PoweredOffVmCount)"
-			
-			 ## VMware Vcenter Events
-             $VCAlertsTable = @()
-			 $VCEventDate = (Get-Date).AddDays(-1)
-             $start = (Get-Date).AddHours(-24)
-             $VCAlerts = Get-VIEvent -Start $start -MaxSamples ([int]::MaxValue) | Where-Object {$_ -is [VMware.Vim.AlarmStatusChangedEvent] -and ($_.To -match "red|yellow") -and ($_.FullFormattedMessage -notlike "*Virtual machine*")` -and ($_.CreatedTime -gt $VCEventDate)}
-
-             if ($VCAlerts) {
-				 
-				 foreach ($VCAlertsDetail in $VCAlerts) {
-					 $VCAlertsInfo = New-Object PSObject -Property @{
-							 'VMWare vCenter Events' = $VCAlertsDetail.FullFormattedMessage
-							 'Alert Created Time' = $VCAlertsDetail.CreatedTime
-					}		 
-					 $VCAlertsTable += $VCAlertsInfo
-				} 
-				
-				 # Display Detail of SVT Host to the table
-			     Write-Host "`n### VMWare vCenter Critical Events For The Last 24 Hours ###" -ForegroundColor White
-			     $VCAlertsTable | Sort-Object -Property 'Alert Created Time' -Descending | Format-Table -Property 'VMWare vCenter Events', 'Alert Created Time' | Format-Table -AutoSize
-			 
-			  }else {
-				Write-Host "`nNo Critical Alert Found in the Last 24 Hours...  `n" -ForegroundColor Green  
-              }	
-			  
-             # Shows Datacenter has Intelligent Workload Optimizer enabled or disabled ?
-			 Write-Host "### Intelligent Workload Optimizer State ###`n" -ForegroundColor White
-			 $SvtIntWorkCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-iwo-show --datacenter $($selecteddcname) --cluster $($selectedclsname)"
-			 $SvtIntWork = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtIntWorkCmd  -TimeOut 60
-			 $SvtIntWork.Output  
-				
-			 Write-Host "`n### SVT Cluster Arbiter State ###" -ForegroundColor White
-			 
-			 Write-Host "`nRequired Arbiter:                  $($clusterstate.omnistack_clusters[0].arbiter_required)"
-			 
-			 if ($clusterstate.omnistack_clusters[0].arbiter_required -eq 'true') {
-				 if ($clusterstate.omnistack_clusters[0].arbiter_configured -eq 'true') {
-						 Write-Host "Arbiter Configured  :               $($clusterstate.omnistack_clusters[0].arbiter_configured)"
-						 
-						 if ($clusterstate.omnistack_clusters[0].arbiter_connected -eq 'true') {
-								 Write-Host "Arbiter Conected :                 $($clusterstate.omnistack_clusters[0].arbiter_connected)"
-								 Write-Host "Arbiter Address  :                  $($clusterstate.omnistack_clusters[0].arbiter_address)"
-							 }else {
-								 Write-Host "Arbiter Conected  :                 $($clusterstate.omnistack_clusters[0].arbiter_connected)" -ForegroundColor Red
-								 $arbiterconnected = 1 
-							 }
-	             
-				 } else {
-						 Write-Host "Arbiter Configured  :                  $($clusterstate.omnistack_clusters[0].arbiter_configured)" -ForegroundColor Red
-						 $arbiterconfigured = 1
-				 }
-				 
-			 }
-	
 			 
 			 $pysical_space = $($clusterstate.omnistack_clusters[0].allocated_capacity / 1TB).ToString("F2")
 			 $used_space = $($clusterstate.omnistack_clusters[0].used_capacity / 1TB).ToString("F2")
@@ -624,15 +581,15 @@ function Test-Net-Connection($destination)  {
 				 $storagefreestate = 1
 			 }
 			 Write-Host "Local Backup Capacity:             $local_backup_space TiB"
-
-             # Get SVT Host Status 
+			 
+			              # Get SVT Host Status 
 			 $hostlist = Get-Cluster -Name $clusterstate.omnistack_clusters[0].name | Get-VMHost
 			 # Create a table to display svt host information
 			 $HostTable = @()
 			 foreach ($HostDetail in $hostlist) {
 					 $EsxiPercentCpu = $(($HostDetail.CpuUsageMhz / $HostDetail.CpuTotalMhz ) * 100).ToString("F0")
 					 $EsxiPercentMem = $(($HostDetail.MemoryUsageGB / $HostDetail.MemoryTotalGB ) * 100).ToString("F0")
-						 
+					 			 
 					 $HostInfo = New-Object PSObject -Property @{
 							 'Name' = $HostDetail.ExtensionData.Name
 							 'ConnectionState' = $HostDetail.ConnectionState
@@ -674,14 +631,60 @@ function Test-Net-Connection($destination)  {
              }else{
                   Write-Host "`nNo Active Alert Found On SVT (ESXI) Hosts..." 
 		     }
+			
+			 ## VMware Vcenter Events
+             $VCAlertsTable = @()
+			 $VCEventDate = (Get-Date).AddDays(-1)
+             $start = (Get-Date).AddHours(-24)
+             $VCAlerts = Get-VIEvent -Start $start -MaxSamples ([int]::MaxValue) | Where-Object {$_ -is [VMware.Vim.AlarmStatusChangedEvent] -and ($_.To -match "red|yellow") -and ($_.FullFormattedMessage -notlike "*Virtual machine*")` -and ($_.CreatedTime -gt $VCEventDate)}
+
+             if ($VCAlerts) {
+				 
+				 foreach ($VCAlertsDetail in $VCAlerts) {
+					 $VCAlertsInfo = New-Object PSObject -Property @{
+							 'VMWare vCenter Events' = $VCAlertsDetail.FullFormattedMessage
+							 'Alert Created Time' = $VCAlertsDetail.CreatedTime
+					}		 
+					 $VCAlertsTable += $VCAlertsInfo
+				} 
+				
+				 # Display Detail of SVT Host to the table
+			     Write-Host "`n### VMWare vCenter Critical Events For The Last 24 Hours ###" -ForegroundColor White
+			     $VCAlertsTable | Sort-Object -Property 'Alert Created Time' -Descending | Format-Table -Property 'VMWare vCenter Events', 'Alert Created Time' | Format-Table -AutoSize
 			 
-			 # Display Datacenter Balance State
-			 Write-Host "`n### Datacenter Resource Balancing State ###`n" -ForegroundColor White
-             $SvtBalanceCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-balance-show --shownodeip --consumption --showHiveName"	
-			 $SvtBalance = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtBalanceCmd -TimeOut 60
-			 $SvtBalance.Output	 
+			  }else {
+				Write-Host "`nNo Critical Alert Found in the Last 24 Hours...  `n" -ForegroundColor Green  
+              }	
+			  
+			 Write-Host "`n### SVT Cluster Arbiter State ###" -ForegroundColor White
+			 Write-Host "`nRequired Arbiter:                  $($clusterstate.omnistack_clusters[0].arbiter_required)"
 			 
-             # Get SVT Datastore Status
+			 if ($clusterstate.omnistack_clusters[0].arbiter_required -eq 'true') {
+				 if ($clusterstate.omnistack_clusters[0].arbiter_configured -eq 'true') {
+						 Write-Host "Arbiter Configured  :               $($clusterstate.omnistack_clusters[0].arbiter_configured)"
+						 
+						 if ($clusterstate.omnistack_clusters[0].arbiter_connected -eq 'true') {
+								 Write-Host "Arbiter Conected :                 $($clusterstate.omnistack_clusters[0].arbiter_connected)"
+								 Write-Host "Arbiter Address  :                  $($clusterstate.omnistack_clusters[0].arbiter_address)"
+							 }else {
+								 Write-Host "Arbiter Conected  :                 $($clusterstate.omnistack_clusters[0].arbiter_connected)" -ForegroundColor Red
+								 $arbiterconnected = 1 
+							 }
+	             
+				 } else {
+						 Write-Host "Arbiter Configured  :                  $($clusterstate.omnistack_clusters[0].arbiter_configured)" -ForegroundColor Red
+						 $arbiterconfigured = 1
+				 }
+				 
+			 }
+			  
+             # Shows Datacenter has Intelligent Workload Optimizer enabled or disabled ?
+			 Write-Host "`n### Intelligent Workload Optimizer State ###`n" -ForegroundColor White
+			 $SvtIntWorkCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-iwo-show --datacenter $($selecteddcname) --cluster $($selectedclsname)"
+			 $SvtIntWork = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtIntWorkCmd  -TimeOut 60
+			 $SvtIntWork.Output  
+			 
+			 # Get SVT Datastore Status
 			 Write-Host "`n### Simplivity Datastore List ###" -ForegroundColor White
 			 $DSDetailList = Get-SvtDatastore | Where-Object  ClusterName -eq $clusterstate.omnistack_clusters[0].name |  Select-Object DatastoreName, SizeGB, SingleReplica, ClusterName, Deleted, PolicyName
 			 $DatastoreTable = @()
@@ -699,8 +702,110 @@ function Test-Net-Connection($destination)  {
 			 }
 			 # Display Detail of Datastore to the table
 			 $DatastoreTable | Format-Table -Property 'Datastore Name', 'Size GB', 'Cluster Name', 'Single Replica', 'Deleted', 'Backup Policy Name'
+ 	  
+			 # Get Virtual Machine States
+			 Write-Host "`n### The Information Of Driven Virtual Machines ###" -ForegroundColor White
+			 $VMDetailList = Get-SvtVM -ClusterName $clusterstate.omnistack_clusters[0].name 
+			 # Create a table to display virtual machine information
+			 $VMTable = @()
+ 
+			 foreach ($VMDetail in $VMDetailList) {
+				 $vmInfo = New-Object PSObject -Property @{
+					 'VM Name   ' = $VMDetail.VmName
+					 'Power State' = $VMDetail.VmPowerState
+					 'State   ' = $VMDetail.State
+					 'SVT HA Status   ' = $VMDetail.HAstatus
+					 'SVT Datastore Name' = $VMDetail.DatastoreName
+					 'SVT Backup Policy Name        ' = $VMDetail.PolicyName
+					 'VM Host          ' = $VMDetail.HostName
+					 'VM Create Date    ' = $VMDetail.CreateDate
+				 }
+				 $VMTable += $vmInfo
+			 }
+			 # Display Detail of VM to the table
+			 $VMTable | Sort -Property 'VM Host', 'Power State', 'HA Status' | Format-Table -Property 'VM Name   ', 'Power State', 'State   ', 'SVT HA Status   ', 'SVT Datastore Name', 'SVT Backup Policy Name        ', 'VM Host          ', 'VM Create Date    '
+			        			 
+			 ## Active VM Alarms
+             $VMAlarmReport = @()
+             $VMStatus = (Get-VM | Get-View) | Select-Object Name,OverallStatus,ConfigStatus,TriggeredAlarmState
+             $VMErrors = $VMStatus  | Where-Object {$_.OverallStatus -ne "Green"}
 
+             if ($VMErrors) {
+                  foreach ($VMError in $VMErrors){
+                      foreach ($TriggeredAlarm in $VMError.TriggeredAlarmstate) {
+                            $VMprops = @{
+                              'Virtual Machine Name' = $VMError.Name
+                              'Over All Status' = $VMError.OverallStatus
+                              'Triggered Alarms' = (Get-AlarmDefinition -Id $TriggeredAlarm.Alarm).Name
+                            }
+                        [array]$VMAlarms += New-Object PSObject -Property $VMprops
+                      }
+                 }
+            }
 
+		    Write-Host "### Virtual Machine Active Alarms ###" -ForegroundColor White
+            if ($VMAlarms){
+	             $VMAlarms | Format-Table -Property 'Virtual Machine Name', 'Over All Status', 'Triggered Alarms'
+            }else{
+	             Write-Host "`nNo Active Alerts Found On Virtual Machines... "
+            }   
+
+            # Snapshot Report
+			$snapshotdays = "3"
+            $Snapshotdate = (Get-Date).AddDays(-$snapshotdays)
+            $VMSnapshotReport = @()
+            $SnapshotCmd  = Get-Cluster -Name $clusterstate.omnistack_clusters[0].name | Get-VM | get-snapshot
+            $SnapshotDateReport = $SnapshotCmd | Select-Object vm, name,created,description | Where-Object {$_.created -lt $Snapshotdate}
+
+            if ($SnapshotDateReport){
+                foreach ($snapshot in $SnapshotDateReport) {
+		             $SnapInfo = New-Object PSObject -Property @{
+			            'VM Name' = $snapshot.vm
+			            'Snapshot Name' = $snapshot.name
+			            'Snapshot Creation Date' = $snapshot.created
+			            'Snapshot Description' = $snapshot.description 
+		            }
+			        $VMSnapshotReport += $SnapInfo
+	            }
+            }
+
+            Write-Host "`n### Snapshots Older Than $($snapshotdays) Days ###" -ForegroundColor White
+            if ($SnapshotDateReport) {
+                $VMSnapshotReport | Format-Table -Property 'VM Name', 'Snapshot Name', 'Snapshot Creation Date', 'Snapshot Description'
+            }
+            else {
+                Write-Host "`nNo Snapshots older than $($snapshotdays)" 
+            }
+			 
+			 # Display Datacenter Balance State
+			 Write-Host "`n### Datacenter Resource Balancing State ###`n" -ForegroundColor White
+             $SvtBalanceCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-balance-show --shownodeip --consumption --showHiveName"	
+			 $SvtBalance = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtBalanceCmd -TimeOut 60
+			 $SvtBalance.Output	
+			 
+			 # Get Virtual Machine Replica Sets
+			 Write-Host "`n### Virtual Machine Replica Sets  ###" -ForegroundColor White
+			 $SvtVMReplicaSet = Get-SVTvmReplicaSet -ClusterName $clusterstate.omnistack_clusters[0].name 
+			 # Create a table to display virtual machine replicaset information
+			 $ReplicaSetTable = @()
+ 
+			 foreach ($ReplicaDetail in $SvtVMReplicaSet) {
+				 $ReplicaInfo = New-Object PSObject -Property @{
+					 'VM Name         ' = $ReplicaDetail.VmName
+					 'State     ' = $ReplicaDetail.State
+					 'SVT HA Status   ' = $ReplicaDetail.HAstatus
+					 'Primary Host          ' = $ReplicaDetail.Primary
+					 'Secondary Host          ' = $ReplicaDetail.Secondary
+				 }
+				 $ReplicaSetTable += $ReplicaInfo
+			 }
+			 # Display Detail of VM ReplicaSet to the table
+			 $ReplicaSetTable | Sort -Property 'Primary Host          ' | Format-Table -Property 'VM Name         ', 'State     ', 'SVT HA Status   ', 'Primary Host          ', 'Secondary Host          '
+			        	
+			 
+			 # Check Degrede VM Replicasets 
+			 $vmreplicasetdegreded = $SvtVMReplicaSet | Where-Object  HAStatus -eq  DEGRADED
+			 
 			 $BackupPolicies  = Get-SvtPolicy -Raw | ConvertFrom-Json
 			 # Create an empty array to store the rule data
 			 $BackupRulesTable = @()
@@ -735,88 +840,6 @@ function Test-Net-Connection($destination)  {
 				 Write-Host "Simplivity Backup Queue Is Empty On The Backup State Machine For Replication... `n"
 			 }
 			 
-			 # Get Virtual Machine States
-			 Write-Host "`n### The Information Of Driven Virtual Machines ###" -ForegroundColor White
-			 $VMDetailList = Get-Cluster -Name $clusterstate.omnistack_clusters[0].name | Get-VM
-			 # Create a table to display virtual machine information
-			 $VMTable = @()
- 
-			 foreach ($VMDetail in $VMDetailList) {
-				 $vmInfo = New-Object PSObject -Property @{
-					 'VM Name' = $VMDetail.Name
-					 'Power State' = $VMDetail.PowerState
-					 'Overall Status' = $VMDetail.ExtensionData.OverallStatus
-					 'Config Status' = $VMDetail.ExtensionData.ConfigStatus
-					 'CPU Count' = $VMDetail.NumCpu
-					 'Memory (GB)' = $VMDetail.MemoryGB
-					 'Guest OS' = $VMDetail.GuestId
-					 'VM Host' = $VMDetail.VMHost.Name
-				 }
-				 $VMTable += $vmInfo
-			 }
-			 # Display Detail of VM to the table
-			 $VMTable | Sort -Property 'VMHost', 'Power State', 'Memory (GB)' | Format-Table -Property 'VM Name', 'Power State', 'Overall Status', 'Config Status', 'CPU Count', 'Memory (GB)', 'Guest OS', 'VM Host' 
-			 
-			 ## Active VM Alarms
-             $VMAlarmReport = @()
-             $VMStatus = (Get-VM | Get-View) | Select-Object Name,OverallStatus,ConfigStatus,TriggeredAlarmState
-             $VMErrors = $VMStatus  | Where-Object {$_.OverallStatus -ne "Green"}
-
-             if ($VMErrors) {
-                  foreach ($VMError in $VMErrors){
-                      foreach ($TriggeredAlarm in $VMError.TriggeredAlarmstate) {
-                            $VMprops = @{
-                              'Virtual Machine Name' = $VMError.Name
-                              'Over All Status' = $VMError.OverallStatus
-                              'Triggered Alarms' = (Get-AlarmDefinition -Id $TriggeredAlarm.Alarm).Name
-                            }
-                        [array]$VMAlarms += New-Object PSObject -Property $VMprops
-                      }
-                 }
-            }
-
-            Write-Host "### Virtual Machine Active Alarms ###" -ForegroundColor White
-            if ($VMAlarms){
-	             $VMAlarms | Format-Table -Property 'Virtual Machine Name', 'Over All Status', 'Triggered Alarms'
-            }else{
-	             Write-Host "`nNo Active Alerts Found On Virtual Machines... "
-            }
-			 
-
-            # Snapshot Report
-			$snapshotdays = "3"
-            $Snapshotdate = (Get-Date).AddDays(-$snapshotdays)
-            $VMSnapshotReport = @()
-            $SnapshotCmd  = Get-Cluster -Name $clusterstate.omnistack_clusters[0].name | Get-VM | get-snapshot
-            $SnapshotDateReport = $SnapshotCmd | Select-Object vm, name,created,description | Where-Object {$_.created -lt $Snapshotdate}
-
-            if ($SnapshotDateReport){
-                foreach ($snapshot in $SnapshotDateReport) {
-		             $SnapInfo = New-Object PSObject -Property @{
-			            'VM Name' = $snapshot.vm
-			            'Snapshot Name' = $snapshot.name
-			            'Snapshot Creation Date' = $snapshot.created
-			            'Snapshot Description' = $snapshot.description 
-		            }
-			        $VMSnapshotReport += $SnapInfo
-	            }
-            }
-
-            Write-Host "`n### Snapshots Older Than $($snapshotdays) Days ###" -ForegroundColor White
-            if ($SnapshotDateReport) {
-                $VMSnapshotReport | Format-Table -Property 'VM Name', 'Snapshot Name', 'Snapshot Creation Date', 'Snapshot Description'
-            }
-            else {
-                Write-Host "`nNo Snapshots older than $($snapshotdays)" 
-            }
-			 
-			 
-			 # Get VM Replicaset State
-			 Write-Host "`n### The Information Of VM Replicasets ###" -ForegroundColor White
-			 $vmreplicaset = Get-SVTvmReplicaSet -ClusterName $clusterstate.omnistack_clusters[0].name  | Select-Object  VmName, State,  HAStatus 
-			 $vmreplicasetdegreded = Get-SVTvmReplicaSet -ClusterName $clusterstate.omnistack_clusters[0].name | Where-Object  HAStatus -eq  DEGRADED   |  Select-Object  VmName, State,  HAstatus
-			 $vmreplicaset | Format-Table -AutoSize 
-			 
 			 # Display Support State
 			 Write-Host "`n### Datacenter Support Reg. State ###`n" -ForegroundColor White
 			 $SvtSupportCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-support-show"
@@ -826,7 +849,7 @@ function Test-Net-Connection($destination)  {
              # Remove OVC SSH Sessşon
 			 Remove-SSHSession -SessionId $SSHOVCSession.SessionID | Out-Null
  
-			 if ($upgradestate -eq $null -and $memberscount -eq $null -and $arbiterconfigured -eq $null -and $arbiterconnected -eq $null -and $storagefreestate -eq $null -and $vmreplicasetdegreded.Count -eq 0 -and $vmclsstate -eq $null) {
+			 if ($upgradestate -eq $null -and $memberscount -eq $null -and $arbiterconfigured -eq $null -and $arbiterconnected -eq $null -and $storagefreestate -eq $null -and $vmreplicasetdegreded.Count -eq 0 -and $vmclsstate -eq $null -and $vmhastate -eq $null) {
 					 Write-Host "`nMessage: The status of the cluster ($($clusterstate.omnistack_clusters[0].name)) is consistent and you can continue to upgrade .... " -ForegroundColor Green
 			 } else {
 				 
@@ -853,6 +876,10 @@ function Test-Net-Connection($destination)  {
 				 if ($vmclsstate) {
 				 Write-Host "`nError Message: There are some errors or warnings in the cluster, check cluster state !!!"  -ForegroundColor yellow
 				 }
+				 if ($vmhastate) {
+				 Write-Host "`nError Message: VMware Cluster High Availability Not Enabled, check cluster status !!!"  -ForegroundColor yellow
+				 }
+				 
 			 }
 		  
 			 Stop-Transcript
@@ -873,6 +900,7 @@ function Test-Net-Connection($destination)  {
 				 $raidbatteryhwstate = $null
 				 $cpuusage = $null
 				 $memusage = $null
+				 $shutdownstatecheck = $null
 				 # Get ESXI Host Infromation
 				 $esxihost = Get-VMHost -Name $svthost.name  | Select-Object -Property NumCpu, CpuTotalMhz, CpuUsageMhz, MemoryTotalGB, MemoryUsageGB, Version, Build 
 				 $percentCpu = $(($esxihost.CpuUsageMhz / $esxihost.CpuTotalMhz ) * 100).ToString("F0")
@@ -880,7 +908,8 @@ function Test-Net-Connection($destination)  {
                  $NetTestCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-network-test --datacenter $($selecteddcname) --cluster $($selectedclsname)"  
 				 $ServiceStateCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-managed-service-show"
 				 $cfgdbstateCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-cfgdb-get-sync-status"
-				 $NetStateCmd = "/bin/netstat -win"				 
+				 $NetStateCmd = "/bin/netstat -win"	
+                 $shutdownstateCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-shutdown-status"				 
 				 $HOSTReportFile = "$($global:ReportDirPath)\$($svthost.name)-$($logtimestamp).log"
 				 
 				Write-Host "`n#### SVT Host: $($svthost.name) ####`n" -ForegroundColor yellow
@@ -928,6 +957,14 @@ function Test-Net-Connection($destination)  {
 					 Write-Host "SVT Upgrade State:           $($svthost.upgrade_state)" -ForegroundColor Red
 					 $hostupgradestate = 1
 				 }
+				 # Check Host Shutdown State
+				 $shutdownstate = Invoke-SSHcommand -SessionId $OVCSession.SessionID -Command $shutdownstateCmd -TimeOut 60
+                 if ($shutdownstate.Output -match "task\s*is\s*not\s*running\s*") {
+                     Write-Host "SVT Shutdown State:          The host is not in shutdown state" 
+                } else {
+                    Write-Host "SVT Shutdown State:           The host is in shutdown state duty" -ForegroundColor Red
+					$shutdownstatecheck = 1
+                }
 				 Write-Host "SVT Host ESXI Image Version: $($esxihost.Version)"
 				 Write-Host "SVT Host ESXI Build:         $($esxihost.Build)"
 				 Write-Host "SVT Host CPU Total MHz:      $($esxihost.CpuTotalMhz)"
@@ -1082,7 +1119,7 @@ function Test-Net-Connection($destination)  {
 				# Remove OVC SSH Sessşon
 			    Remove-SSHSession -SessionId $OVCSession.SessionID | Out-Null
 		    
-				 if ($hostconnectivity -eq $null -and $hostupgradestate -eq $null -and $hostdisktstate -eq $null -and $hostversion -eq $null -and $hwstate -eq $null -and $raidhwstate -eq $null -and $raidbatteryhwstate -eq $null -and $cpuusage -eq $null -and $memusage -eq $null) {
+				 if ($hostconnectivity -eq $null -and $hostupgradestate -eq $null -and $hostdisktstate -eq $null -and $hostversion -eq $null -and $hwstate -eq $null -and $raidhwstate -eq $null -and $raidbatteryhwstate -eq $null -and $cpuusage -eq $null -and $memusage -eq $null -and $shutdownstatecheck -eq $null) {
 						 Write-Host "`nMessage: The status of the SVT Host - ( $($svthost.name) ) is consistent and you can continue to upgrade ....`n" -ForegroundColor Green
 				 
 				 } else {
@@ -1116,6 +1153,9 @@ function Test-Net-Connection($destination)  {
 					 if ($memusage) {
 					 Write-Host "Error Message: High Memory usage detected on the SVT host - ( $($svthost.name) !!!"  -ForegroundColor yellow
 					 }
+					 if ($shutdownstatecheck) {
+	                 Write-Host "`nError Message: SVT Host The host is in SHUTDOWN STATE DUTY !!!"  -ForegroundColor  Red
+                 }	
 				 }	
  
                  Stop-Transcript
