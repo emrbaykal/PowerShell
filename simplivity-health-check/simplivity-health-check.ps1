@@ -44,16 +44,18 @@
     Date    : 01/19/2024
 	AUTHOR  : Emre Baykal - HPE Services
 #>
+
+# Adjust Powershell Window Size
 $pshost = Get-Host              # Get the PowerShell Host.
 $pswindow = $pshost.UI.RawUI    # Get the PowerShell Host's UI.
 
 $newsize = $pswindow.BufferSize # Get the UI's current Buffer Size.
-$newsize.Width = 200            # Set the new buffer's width to 208 columns.
+$newsize.Width = 208            # Set the new buffer's width to 208 columns.
 $newsize.Height = 8000
 $pswindow.buffersize = $newsize # Set the new Buffer Size as active.
 
 $newsize = $pswindow.windowsize # Get the UI's current Window Size.
-$newsize.Width = 200            # Set the new Window Width to 208 columns.
+$newsize.Width = 208            # Set the new Window Width to 208 columns.
 $newsize.Height = 50
 $pswindow.windowsize = $newsize # Set the new Window Size as active.
 
@@ -317,8 +319,7 @@ function Test-Net-Connection($destination)  {
 	 Write-Host "`nExecuting TCP Ports Connection Tests (22/TCP, 443/TCP, 80/TCP) To The VMware VCenter..."  -ForegroundColor Yellow
 	 Test-Net-Connection $global:vCenterServer
  
-	 try {
-	 #######	
+
 			 $ErrorActionPreference = "SilentlyContinue"
 			 $WarningPreference ="SilentlyContinue"
  
@@ -595,7 +596,7 @@ function Test-Net-Connection($destination)  {
 			 }
 			 Write-Host "Local Backup Capacity:             $local_backup_space TiB"
 			 
-			              # Get SVT Host Status 
+			 # Get SVT Host Status 
 			 $hostlist = Get-Cluster -Name $clusterstate.omnistack_clusters[0].name | Get-VMHost
 			 # Create a table to display svt host information
 			 $HostTable = @()
@@ -716,6 +717,7 @@ function Test-Net-Connection($destination)  {
 			 # Display Detail of Datastore to the table
 			 $DatastoreTable | Format-Table -Property 'Datastore Name', 'Size GB', 'Cluster Name', 'Single Replica', 'Deleted', 'Backup Policy Name'
  	  
+
 			 # Get Virtual Machine States
 			 Write-Host "`n### The Information Of Driven Virtual Machines ###" -ForegroundColor White
 			 $VMDetailList = Get-SvtVM -ClusterName $clusterstate.omnistack_clusters[0].name 
@@ -723,6 +725,16 @@ function Test-Net-Connection($destination)  {
 			 $VMTable = @()
  
 			 foreach ($VMDetail in $VMDetailList) {
+
+				 $VMBackup = Get-SvtBackup -DestinationName $clusterstate.omnistack_clusters[0].name -VmName $VMDetail.VmName -All -ErrorAction SilentlyContinue
+
+				 if ($VMBackup) {
+					 $BackupSize = (($VMBackup | Measure-Object -Property SizeGB -Sum).Sum).ToString("F2")
+				     $NumOfBackup =  $VMBackup.BackupName.count
+				 } else {
+					 $BackupSize = 0
+					 $NumOfBackup = 0
+			     } 
 				 $vmInfo = New-Object PSObject -Property @{
 					 'VM Name   ' = $VMDetail.VmName
 					 'Power State' = $VMDetail.VmPowerState
@@ -730,14 +742,16 @@ function Test-Net-Connection($destination)  {
 					 'SVT HA Status   ' = $VMDetail.HAstatus
 					 'SVT Datastore Name' = $VMDetail.DatastoreName
 					 'SVT Backup Policy Name        ' = $VMDetail.PolicyName
+					 'Local Backup Size(GB)' = $BackupSize
+					 'Num Of Backups'   =  $NumOfBackup
 					 'VM Host          ' = $VMDetail.HostName
-					 'VM Create Date    ' = $VMDetail.CreateDate
 				 }
 				 $VMTable += $vmInfo
+				# $NumOfBackup = 0
 			 }
 			 # Display Detail of VM to the table
-			 $VMTable | Sort -Property 'VM Host', 'Power State', 'HA Status' | Format-Table -Property 'VM Name   ', 'Power State', 'State   ', 'SVT HA Status   ', 'SVT Datastore Name', 'SVT Backup Policy Name        ', 'VM Host          ', 'VM Create Date    '
-			        			 
+			 $VMTable | Sort -Property 'VM Host', 'Power State', 'HA Status' | Format-Table -Property 'VM Name   ', 'Power State', 'State   ', 'SVT HA Status   ', 'SVT Datastore Name', 'SVT Backup Policy Name        ', 'Local Backup Size(GB)', 'Num Of Backups', 'VM Host          '
+			
 			 ## Active VM Alarms
              $VMAlarmReport = @()
              $VMStatus = (Get-VM | Get-View) | Select-Object Name,OverallStatus,ConfigStatus,TriggeredAlarmState
@@ -1260,9 +1274,6 @@ function Test-Net-Connection($destination)  {
 			 
 			 }			
  
-		 }
-	 
-	 catch{}    
 	 
 	 finally
 	 {
@@ -1291,8 +1302,8 @@ function Test-Net-Connection($destination)  {
 	 
 	Clear-Host
 	
-    try {
-			 
+
+		try{	 
 			 Write-Host "#############################################################################################################################" -ForegroundColor White
 			 Write-Host "#                                                Capture Support Dump                                                       #" -ForegroundColor White
 			 Write-Host "#############################################################################################################################`n" -ForegroundColor White
@@ -1531,8 +1542,9 @@ function Test-Net-Connection($destination)  {
 					 }		 
 			 }
 			 
-	}
-    catch {}
+        }
+	
+	catch {}
 	
 	finally
 	{
@@ -1664,7 +1676,7 @@ function Get-Update-Manager{
 	 
 	 Clear-Host
 	 
-	 try {
+
 		 
 		  $osInfo = Get-CimInstance Win32_OperatingSystem | Select-Object Status, CSName ,Caption, BuildNumber, TotalVisibleMemorySize
 		  $totalCores = (Get-CimInstance Win32_Processor | Measure-Object -Property NumberOfCores -Sum).Sum
@@ -1772,8 +1784,7 @@ function Get-Update-Manager{
 		 }
  
 		 Stop-Transcript
-	 }
-	 catch{}    
+
 	 
 	 finally
 	 {
