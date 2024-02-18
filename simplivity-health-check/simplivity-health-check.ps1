@@ -50,12 +50,12 @@ $pshost = Get-Host              # Get the PowerShell Host.
 $pswindow = $pshost.UI.RawUI    # Get the PowerShell Host's UI.
 
 $newsize = $pswindow.BufferSize # Get the UI's current Buffer Size.
-$newsize.Width = 208            # Set the new buffer's width to 208 columns.
+$newsize.Width = 214            # Set the new buffer's width to 208 columns.
 $newsize.Height = 8000
 $pswindow.buffersize = $newsize # Set the new Buffer Size as active.
 
 $newsize = $pswindow.windowsize # Get the UI's current Window Size.
-$newsize.Width = 208            # Set the new Window Width to 208 columns.
+$newsize.Width = 214            # Set the new Window Width to 208 columns.
 $newsize.Height = 50
 $pswindow.windowsize = $newsize # Set the new Window Size as active.
 
@@ -671,22 +671,22 @@ function Test-Net-Connection($destination)  {
               }	
 			  
 			 Write-Host "`n### SVT Cluster Arbiter State ###" -ForegroundColor White
-			 Write-Host "`nRequired Arbiter:                  $($clusterstate.omnistack_clusters[0].arbiter_required)"
+			 Write-Host "`nRequired Arbiter:   $($clusterstate.omnistack_clusters[0].arbiter_required)"
 			 
 			 if ($clusterstate.omnistack_clusters[0].arbiter_required -eq 'true') {
 				 if ($clusterstate.omnistack_clusters[0].arbiter_configured -eq 'true') {
-						 Write-Host "Arbiter Configured  :               $($clusterstate.omnistack_clusters[0].arbiter_configured)"
+						 Write-Host "Arbiter Configured:   $($clusterstate.omnistack_clusters[0].arbiter_configured)"
 						 
 						 if ($clusterstate.omnistack_clusters[0].arbiter_connected -eq 'true') {
-								 Write-Host "Arbiter Conected :                 $($clusterstate.omnistack_clusters[0].arbiter_connected)"
-								 Write-Host "Arbiter Address  :                  $($clusterstate.omnistack_clusters[0].arbiter_address)"
+								 Write-Host "Arbiter Conected:   $($clusterstate.omnistack_clusters[0].arbiter_connected)"
+								 Write-Host "Arbiter Address:   $($clusterstate.omnistack_clusters[0].arbiter_address)"
 							 }else {
-								 Write-Host "Arbiter Conected  :                 $($clusterstate.omnistack_clusters[0].arbiter_connected)" -ForegroundColor Red
+								 Write-Host "Arbiter Conected:   $($clusterstate.omnistack_clusters[0].arbiter_connected)" -ForegroundColor Red
 								 $arbiterconnected = 1 
 							 }
 	             
 				 } else {
-						 Write-Host "Arbiter Configured  :                  $($clusterstate.omnistack_clusters[0].arbiter_configured)" -ForegroundColor Red
+						 Write-Host "Arbiter Configured  :   $($clusterstate.omnistack_clusters[0].arbiter_configured)" -ForegroundColor Red
 						 $arbiterconfigured = 1
 				 }
 				 
@@ -735,22 +735,27 @@ function Test-Net-Connection($destination)  {
 					 $BackupSize = 0
 					 $NumOfBackup = 0
 			     } 
+				 
+				 $VMState = (Get-VM -name $VMDetail.VmName | Get-View) | Select-Object Name, OverallStatus, GuestHeartbeatStatus
+				 
 				 $vmInfo = New-Object PSObject -Property @{
-					 'VM Name   ' = $VMDetail.VmName
+					 'VM Name      ' = $VMDetail.VmName
 					 'Power State' = $VMDetail.VmPowerState
-					 'State   ' = $VMDetail.State
-					 'SVT HA Status   ' = $VMDetail.HAstatus
+					 'Overall Status' = $VMState.OverallStatus
+					 'Guest Heartbeat Status' = $VMState.GuestHeartbeatStatus
+					 'State ' = $VMDetail.State
+					 'SVT HA Status ' = $VMDetail.HAstatus
 					 'SVT Datastore Name' = $VMDetail.DatastoreName
-					 'SVT Backup Policy Name        ' = $VMDetail.PolicyName
-					 'Local Backup Size(GB)' = $BackupSize
-					 'Num Of Backups'   =  $NumOfBackup
+					 'SVT Backup Policy Name   ' = $VMDetail.PolicyName
+					 'Local Backup(GB)' = $BackupSize
+					 'Num Of Bckp'   =  $NumOfBackup
 					 'VM Host          ' = $VMDetail.HostName
 				 }
 				 $VMTable += $vmInfo
 				# $NumOfBackup = 0
 			 }
 			 # Display Detail of VM to the table
-			 $VMTable | Sort -Property 'VM Host', 'Power State', 'HA Status' | Format-Table -Property 'VM Name   ', 'Power State', 'State   ', 'SVT HA Status   ', 'SVT Datastore Name', 'SVT Backup Policy Name        ', 'Local Backup Size(GB)', 'Num Of Backups', 'VM Host          '
+			 $VMTable | Sort -Property 'VM Host          ', 'Local Backup(GB)' | Format-Table -Property 'VM Name      ', 'Power State', 'Overall Status', 'Guest Heartbeat Status', 'State ', 'SVT HA Status ', 'SVT Datastore Name', 'SVT Backup Policy Name   ', 'Local Backup(GB)', 'Num Of Bckp', 'VM Host          '
 			
 			 ## Active VM Alarms
              $VMAlarmReport = @()
@@ -803,6 +808,40 @@ function Test-Net-Connection($destination)  {
             else {
                 Write-Host "`nNo Snapshots older than $($snapshotdays)" 
             }
+			
+			 $BackupPolicies  = Get-SvtPolicy -Raw | ConvertFrom-Json
+			 # Create an empty array to store the rule data
+			 $BackupRulesTable = @()
+
+			 # Iterate over each policy and its rules
+			 foreach ($BackupPolicy in $BackupPolicies.policies) {
+				foreach ($rule in $BackupPolicy.rules) {
+					$BackupRuleData = New-Object PSObject -Property @{
+						"Policy Name" = $BackupPolicy.name 
+						"Rule Number" = $rule.number  
+						"Frequency - Hours" = ( $rule.frequency / 60 ) 
+						"Destination" = $rule.destination_name 
+						"Backup Days" = $rule.Days 
+						"Expiration Time - Day" = ( $rule.retention / 60 ) / 24
+						"External Store Name" = $rule.external.store.name 
+						
+					}
+					$BackupRulesTable += $BackupRuleData
+				}
+			 }
+			 
+			 Write-Host "`n### Simplivity Backup Policies ###" -ForegroundColor White
+			 $BackupRulesTable | Format-Table -Property 'Policy Name', 'Backup Days', 'Rule Number', 'Destination', 'External Store Name', 'Frequency - Hours', 'Expiration Time - Day'
+
+             # Displays information about the backups queued for replication on the backup state machine
+			 Write-Host "### Backups Queued For Replication On The Backup State Machine ###`n" -ForegroundColor White
+			 $SvtBackupQueueCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/dsv/dsv-backup-util --operation state-info"
+			 $SvtBackupQueue = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtBackupQueueCmd  -TimeOut 60
+			 if ($SvtBackupQueue.Output) {
+				 $SvtBackupQueue.Output
+			 }else {
+				 Write-Host "`nSimplivity Backup Queue Is Empty On The Backup State Machine For Replication... `n"
+			 }
 			 
 			 # Display Datacenter Balance State
 			 Write-Host "`n### Datacenter Resource Balancing State ###`n" -ForegroundColor White
@@ -827,14 +866,14 @@ function Test-Net-Connection($destination)  {
 				 $ReplicaSetTable += $ReplicaInfo
 			 }
 			 # Display Detail of VM ReplicaSet to the table
-			 $ReplicaSetTable | Sort -Property 'Primary Host          ' | Format-Table -Property 'VM Name         ', 'State     ', 'SVT HA Status   ', 'Primary Replica Location   ', 'Secondary Replica Location '
+			 $ReplicaSetTable | Sort -Property 'Primary Replica Location   ' | Format-Table -Property 'VM Name         ', 'State     ', 'SVT HA Status   ', 'Primary Replica Location   ', 'Secondary Replica Location '
 			        	
 			 Write-Host "`n### SimpliVity Displaced VM List ###" -ForegroundColor White
              foreach ($VMList in $VMDetailList) {
                  $VMReplica = $SvtVMReplicaSet | Where-Object VmName -EQ $VMList.VmName
                  if ($VMList.Hostname -ne $VMReplica.Primary) {
 		              $ReplicaState = New-Object PSObject -Property @{
-                          'VM Name         '              = $VMList.HostName
+                          'VM Name         '              = $VMList.VmName
                           'VM Running Host            '   = $VMList.HostName
                           'Primary Replica Location   '   = $VMReplica.Primary
                           'Secondary Replica Location '   = $VMReplica.Secondary
@@ -853,40 +892,6 @@ function Test-Net-Connection($destination)  {
 			 
 			 # Check Degrede VM Replicasets 
 			 $vmreplicasetdegreded = $SvtVMReplicaSet | Where-Object  HAStatus -eq  DEGRADED
-			 
-			 $BackupPolicies  = Get-SvtPolicy -Raw | ConvertFrom-Json
-			 # Create an empty array to store the rule data
-			 $BackupRulesTable = @()
-
-			 # Iterate over each policy and its rules
-			 foreach ($BackupPolicy in $BackupPolicies.policies) {
-				foreach ($rule in $BackupPolicy.rules) {
-					$BackupRuleData = New-Object PSObject -Property @{
-						"Policy Name" = $BackupPolicy.name 
-						"Rule Number" = $rule.number  
-						"Frequency - Hours" = ( $rule.frequency / 60 ) 
-						"Destination" = $rule.destination_name 
-						"Backup Days" = $rule.Days 
-						"Expiration Time - Day" = ( $rule.retention / 60 ) / 24
-						"External Store Name" = $rule.external.store.name 
-						
-					}
-					$BackupRulesTable += $BackupRuleData
-				}
-			 }
-			 
-			 Write-Host "### Simplivity Backup Policies ###" -ForegroundColor White
-			 $BackupRulesTable | Format-Table -Property 'Policy Name', 'Backup Days', 'Rule Number', 'Destination', 'External Store Name', 'Frequency - Hours', 'Expiration Time - Day'
-
-             # Displays information about the backups queued for replication on the backup state machine
-			 Write-Host "### Backups Queued For Replication On The Backup State Machine ###`n" -ForegroundColor White
-			 $SvtBackupQueueCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/dsv/dsv-backup-util --operation state-info"
-			 $SvtBackupQueue = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtBackupQueueCmd  -TimeOut 60
-			 if ($SvtBackupQueue.Output) {
-				 $SvtBackupQueue.Output
-			 }else {
-				 Write-Host "`nSimplivity Backup Queue Is Empty On The Backup State Machine For Replication... `n"
-			 }
 			 
 			 # Display Support State
 			 Write-Host "`n### Datacenter Support Reg. State ###`n" -ForegroundColor White
