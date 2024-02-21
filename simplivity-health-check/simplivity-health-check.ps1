@@ -625,7 +625,7 @@ function Test-Net-Connection($destination)  {
 			 
 			 ## SVT Host Alarms
              $VMHAlarmReport = @()
-             $VMHostStatus = (Get-VMHost -Location $selectedclsname | Get-View) | Select-Object Name,OverallStatus,ConfigStatus,TriggeredAlarmState
+             $VMHostStatus = (Get-VMHost -Location $selectedclsname  | Get-View) | Select-Object Name,OverallStatus,ConfigStatus,TriggeredAlarmState
              $HostErrors= $VMHostStatus  | Where-Object {$_.OverallStatus -ne "Green" -and $_.TriggeredAlarmState -ne $null} 
 
              if ($HostErrors){
@@ -1325,6 +1325,9 @@ function Test-Net-Connection($destination)  {
 			 }
 			 
 			 Write-Host "****** Script execution completed ******" -ForegroundColor Yellow
+			 
+			 # Remove Variables
+			 Remove-Variable * -ErrorAction SilentlyContinue; $error.Clear();
 	 }
 	 
  ### End Function
@@ -1596,6 +1599,9 @@ function Test-Net-Connection($destination)  {
 			 }
 			 
 			 Write-Host "****** Script execution completed ******" -ForegroundColor Yellow
+			 
+			 # Remove Variables
+			 Remove-Variable * -ErrorAction SilentlyContinue; $error.Clear();
 	}
 	
  }
@@ -1608,7 +1614,7 @@ function Upload-Report-Files{
     Write-Host "#                                                   Upload Report Files                                                       #" -ForegroundColor White
     Write-Host "#############################################################################################################################`n" -ForegroundColor White
  
-	#Load Requşred Modules
+	#Load Required Modules
 	Load-Modules
 	 
 	# Define Server Name
@@ -1695,6 +1701,9 @@ function Upload-Report-Files{
 	}else{
 		Write-Host "Repors Directory Does Not Exists !!! `n" -f Red
 	}
+	
+	 # Remove Variables
+	 Remove-Variable * -ErrorAction SilentlyContinue; $error.Clear();
   
 }
  
@@ -1826,6 +1835,9 @@ function Get-Update-Manager{
 		 }
 			 
 			 Write-Host "`n****** Script execution completed ******" -ForegroundColor Yellow
+			 
+			 # Remove Variables
+			 Remove-Variable * -ErrorAction SilentlyContinue; $error.Clear();
 	 }
  ### End Function	
  }
