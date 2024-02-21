@@ -603,6 +603,7 @@ function Test-Net-Connection($destination)  {
 			 foreach ($HostDetail in $hostlist) {
 					 $EsxiPercentCpu = $(($HostDetail.CpuUsageMhz / $HostDetail.CpuTotalMhz ) * 100).ToString("F0")
 					 $EsxiPercentMem = $(($HostDetail.MemoryUsageGB / $HostDetail.MemoryTotalGB ) * 100).ToString("F0")
+					 $EsxiTotalMem = $HostDetail.MemoryTotalGB.ToString("F2")
 					 			 
 					 $HostInfo = New-Object PSObject -Property @{
 							 'Name' = $HostDetail.ExtensionData.Name
@@ -612,6 +613,7 @@ function Test-Net-Connection($destination)  {
 							 'RebootRequired' = $HostDetail.ExtensionData.Summary.RebootRequired
 							 'NumCpu' = $HostDetail.NumCpu
 							 'CpuUsage %' = $EsxiPercentCpu
+							 'TotalMem(GB)' = $EsxiTotalMem
 							 'MemoryUsage %' = $EsxiPercentMem
 							 'Version' = $HostDetail.Version
 					 }
@@ -619,11 +621,11 @@ function Test-Net-Connection($destination)  {
 			 }
 			 # Display Detail of SVT Host to the table
 			 Write-Host "`n### Simplivity (ESXI) Hosts List ###" -ForegroundColor White
-			 $HostTable | Sort -Property 'CpuUsage %', 'MemoryUsage %' | Format-Table -Property 'Name', 'ConnectionState', 'PowerState', 'OverallStatus', 'RebootRequired', 'NumCpu', 'CpuUsage %', 'MemoryUsage %', 'Version' | Format-Table -AutoSize
+			 $HostTable | Sort -Property 'CpuUsage %', 'MemoryUsage %' | Format-Table -Property 'Name', 'ConnectionState', 'PowerState', 'OverallStatus', 'RebootRequired', 'NumCpu', 'CpuUsage %', 'TotalMem(GB)', 'MemoryUsage %', 'Version' | Format-Table -AutoSize
 			 
 			 ## SVT Host Alarms
              $VMHAlarmReport = @()
-             $VMHostStatus = (Get-VMHost | Get-View) | Select-Object Name,OverallStatus,ConfigStatus,TriggeredAlarmState
+             $VMHostStatus = (Get-VMHost -Location $selectedclsname | Get-View) | Select-Object Name,OverallStatus,ConfigStatus,TriggeredAlarmState
              $HostErrors= $VMHostStatus  | Where-Object {$_.OverallStatus -ne "Green" -and $_.TriggeredAlarmState -ne $null} 
 
              if ($HostErrors){
@@ -725,9 +727,9 @@ function Test-Net-Connection($destination)  {
 			 $VMTable = @()
  
 			 foreach ($VMDetail in $VMDetailList) {
-
+				 
 				 $VMBackup = Get-SvtBackup -DestinationName $clusterstate.omnistack_clusters[0].name -VmName $VMDetail.VmName -All -ErrorAction SilentlyContinue
-
+				 
 				 if ($VMBackup) {
 					 $BackupSize = (($VMBackup | Measure-Object -Property SizeGB -Sum).Sum).ToString("F2")
 				     $NumOfBackup =  $VMBackup.BackupName.count
@@ -735,28 +737,42 @@ function Test-Net-Connection($destination)  {
 					 $BackupSize = 0
 					 $NumOfBackup = 0
 			     } 
+
+				 $VMState = Get-VM -name $VMDetail.VmName -ErrorAction SilentlyContinue
 				 
-				 $VMState = (Get-VM -name $VMDetail.VmName | Get-View) | Select-Object Name, OverallStatus, GuestHeartbeatStatus
+                 if ($VMState) {
+					 $NumCPU = $VMState.NumCpu
+				     $MEM =  $VMState.MemoryGB
+					 $ProvisionedSpace = $VMState.ProvisionedSpaceGB.ToString("F2")
+					 $UsedSpace = $VMState.UsedSpaceGB.ToString("F2")
+					 
+				 } else {
+					 $NumCPU = 0
+				     $MEM =  0
+					 $ProvisionedSpace = 0
+					 $UsedSpace = 0
+			     } 				 
 				 
 				 $vmInfo = New-Object PSObject -Property @{
 					 'VM Name      ' = $VMDetail.VmName
 					 'Power State' = $VMDetail.VmPowerState
-					 'Overall Status' = $VMState.OverallStatus
-					 'Guest Heartbeat Status' = $VMState.GuestHeartbeatStatus
-					 'State ' = $VMDetail.State
+					 'Num CPU' = $NumCPU
+					 'Mem GB' = $MEM
+					 'Provisioned Space(GB)' = $ProvisionedSpace
+					 'Used Space(GB)' = $UsedSpace
 					 'SVT HA Status ' = $VMDetail.HAstatus
 					 'SVT Datastore Name' = $VMDetail.DatastoreName
 					 'SVT Backup Policy Name   ' = $VMDetail.PolicyName
-					 'Local Backup(GB)' = $BackupSize
+					 'Local Bckp(GB)' = $BackupSize
 					 'Num Of Bckp'   =  $NumOfBackup
 					 'VM Host          ' = $VMDetail.HostName
 				 }
 				 $VMTable += $vmInfo
-				# $NumOfBackup = 0
+				 $NumOfBackup = 0
 			 }
 			 # Display Detail of VM to the table
-			 $VMTable | Sort -Property 'VM Host          ', 'Local Backup(GB)' | Format-Table -Property 'VM Name      ', 'Power State', 'Overall Status', 'Guest Heartbeat Status', 'State ', 'SVT HA Status ', 'SVT Datastore Name', 'SVT Backup Policy Name   ', 'Local Backup(GB)', 'Num Of Bckp', 'VM Host          '
-			
+			 $VMTable | Sort -Property 'VM Host          ', 'Local Bckp(GB)' | Format-Table -Property 'VM Name      ', 'Power State', 'Num CPU', 'Mem GB', 'Provisioned Space(GB)', 'Used Space(GB)','SVT Datastore Name', 'SVT Backup Policy Name   ', 'Local Bckp(GB)', 'Num Of Bckp', 'VM Host          '
+			      			 
 			 ## Active VM Alarms
              $VMAlarmReport = @()
              $VMStatus = (Get-VM | Get-View) | Select-Object Name,OverallStatus,ConfigStatus,TriggeredAlarmState
@@ -856,17 +872,28 @@ function Test-Net-Connection($destination)  {
 			 $ReplicaSetTable = @()
  
 			 foreach ($ReplicaDetail in $SvtVMReplicaSet) {
+				 
+				 $VMReplicaState = Get-VM -name $ReplicaDetail.VmName -ErrorAction SilentlyContinue
+				 
+                 if ($VMReplicaState) {
+					 $VMReplicaUsedSpace = $VMReplicaState.UsedSpaceGB.ToString("F2")
+					 
+				 } else {
+					 $VMReplicaUsedSpace = 0
+			     } 		
+				 
 				 $ReplicaInfo = New-Object PSObject -Property @{
 					 'VM Name         ' = $ReplicaDetail.VmName
 					 'State     ' = $ReplicaDetail.State
 					 'SVT HA Status   ' = $ReplicaDetail.HAstatus
+					 'Space(GB)' = $VMReplicaUsedSpace
 					 'Primary Replica Location   ' = $ReplicaDetail.Primary
 					 'Secondary Replica Location ' = $ReplicaDetail.Secondary
 				 }
 				 $ReplicaSetTable += $ReplicaInfo
 			 }
 			 # Display Detail of VM ReplicaSet to the table
-			 $ReplicaSetTable | Sort -Property 'Primary Replica Location   ' | Format-Table -Property 'VM Name         ', 'State     ', 'SVT HA Status   ', 'Primary Replica Location   ', 'Secondary Replica Location '
+			 $ReplicaSetTable | Sort -Property 'Primary Replica Location   ' | Format-Table -Property 'VM Name         ', 'State     ', 'SVT HA Status   ', 'Space(GB)', 'Primary Replica Location   ', 'Secondary Replica Location '
 			        	
 			 Write-Host "`n### SimpliVity Displaced VM List ###" -ForegroundColor White
              foreach ($VMList in $VMDetailList) {
