@@ -1,0 +1,10 @@
+2024-03-06 01:05:58 Script started....
+2024-03-06 01:05:58 Vlun VOL01-SNAP Deletion Successfully
+2024-03-06 01:05:58 Vlun VOL02-SNAP Deletion Successfully
+2024-03-06 01:06:04 ApplicationSet SQL-DB-SNAP Deleted Successfully
+2024-03-06 01:06:09 Snapshot VOL01-SNAP Deleted Successfully
+2024-03-06 01:06:09 Snapshot VOL02-SNAP Deleted Successfully
+2024-03-06 01:06:39 Snapshot Created Successfully
+2024-03-06 01:06:44 Create & Assign VLUN VOL01-SNAP Successfully
+2024-03-06 01:06:44 Create & Assign VLUN VOL02-SNAP Successfully
+2024-03-06 01:09:40 Configuration file not found at path: d
