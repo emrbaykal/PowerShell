@@ -1,7 +1,7 @@
 ####### Define Environment Variables ( Customer fill it according to his own environment)##########
 @{
     ## Define the URI of the storage system API
-    uri = 'https://10.0.50.201:443/api/v1'
+    uri = 'https://xx.xx.xx.xx:443/api/v1'
 	
 	## Define the path to the credential file
     credFile = '$PSScriptRoot\cred.XML'
