@@ -43,15 +43,10 @@ This PowerShell script facilitates interaction with an HPE Primera or compatible
 
 Contributions are welcome! Please feel free to submit pull requests or open issues to improve the script or add new features.
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
 ## Disclaimer
 
 This script is provided as is, with no warranties. Always test in your environment before using in production.
 
 ## Acknowledgments
 
-- Hewlett Packard Enterprise for providing the API and documentation.
 - [Emre Baykal - HPE Services](mailto:emre.baykal@hpe.com) for creating this script.
