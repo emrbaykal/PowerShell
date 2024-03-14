@@ -127,28 +127,60 @@ function Create-Report {
         $index = $inputcsv.IP.IndexOf($ip)
         $inputObject = New-Object System.Object
 		
-		try {
+
 			
 			Write-Host ""
 			Log-Message "Server Information Started To Be Collected From $ip"
 		    Write-Host "Server Information Started To Be Collected From $ip"
-					  
-			# Invoke the REST API with DELETE method
-		    $get_chassis_info = Invoke-RestMethod -Uri https://$ip/redfish/v1/Chassis/1 -Method Get -Headers $headers 
-			
-			$chasiss_serial = $get_chassis_info.SerialNumber
-			$chasiss_model = $get_chassis_info.Model
-			
-		    Log-Message "Get Chassis Info Successfully from $ip"
-			Write-Host "Get Chassis Info Successfully from $ip" -ForegroundColor Green
-		    
-		    # Invoke the REST API with DELETE method
-		    $get_str_cont = Invoke-RestMethod -Uri https://$ip/redfish/v1/systems/1/storage -Method Get -Headers $headers 
-			
-			$str_adapters = $get_str_cont.members | ConvertTo-Json
-		    Log-Message "Get Storage Controller Info Successfully from $ip"
-			Write-Host "Get Storage Controller Info Successfully from $ip" -ForegroundColor Green
-			
+					 
+			 try {					 
+				# Invoke the REST API with DELETE method
+				$get_chassis_info = Invoke-RestMethod -Uri https://$ip/redfish/v1/Chassis/1 -Method Get -Headers $headers 
+				
+				$chasiss_serial = $get_chassis_info.SerialNumber
+				$chasiss_model = $get_chassis_info.Model
+				
+				Log-Message "Get Chassis Info Successfully from $ip"
+				Write-Host "Get Chassis Info Successfully from $ip" -ForegroundColor Green
+			 } catch {
+				 $statusCode = $_.Exception.Response.StatusCode.Value__
+				 $statusDescription = $_.Exception.Response.StatusDescription
+				 $errorMessage = $_.Exception.Message
+				 $stackTrace = $_.Exception.StackTrace
+				 Log-Message "Get Chassis Info Failed From $ip"
+				 Write-Host "Get Chassis Info Failed From $ip" -ForegroundColor Red
+				 Log-Message "Error: $errorMessage"
+				 Write-Host "Error: $errorMessage" -ForegroundColor Red
+				 Log-Message "HTTP Status: $statusCode - $statusDescription"
+				 Write-Host "HTTP Status: $statusCode - $statusDescription" -ForegroundColor Red
+				 Log-Message "Stack Trace: $stackTrace"
+				 Log-Message "Inner Exception: $innerException"
+			 }	 
+			 
+			 try {  
+				# Invoke the REST API with DELETE method
+				$get_str_cont = Invoke-RestMethod -Uri https://$ip/redfish/v1/systems/1/storage -Method Get -Headers $headers 
+				
+				$str_adapters = $get_str_cont.members | ConvertTo-Json
+				Log-Message "Get Storage Controller Info Successfully from $ip"
+				Write-Host "Get Storage Controller Info Successfully from $ip" -ForegroundColor Green
+				
+			 } catch {
+				 
+				 $statusCode = $_.Exception.Response.StatusCode.Value__
+				 $statusDescription = $_.Exception.Response.StatusDescription
+				 $errorMessage = $_.Exception.Message
+				 $stackTrace = $_.Exception.StackTrace
+				 Log-Message "Get Storage Controller Info Failed From $ip"
+				 Write-Host "Get Storage Controller Info From $ip" -ForegroundColor Red
+				 Log-Message "Error: $errorMessage"
+				 Write-Host "Error: $errorMessage" -ForegroundColor Red
+				 Log-Message "HTTP Status: $statusCode - $statusDescription"
+				 Write-Host "HTTP Status: $statusCode - $statusDescription" -ForegroundColor Red
+				 Log-Message "Stack Trace: $stackTrace"
+				 Log-Message "Inner Exception: $innerException"
+			 } 
+			 
 			foreach ($adapter in $get_str_cont.members ) {
 			  	  
 				$fullUri =  $ip + $adapter."@odata.id"
@@ -198,20 +230,13 @@ function Create-Report {
 
 				  }
 			   }
-			
-			
-		} catch {
-			
-		   $statusCode = $_.Exception.Response.StatusCode.Value__
-		   $statusDescription =  $_.Exception.Response.StatusDescription
-		   Log-Message "Data Collection Failed From $ip "
-		   Write-Host "Data Collection Failed From $ip " -ForegroundColor Red
-		   Log-Message "Error Description: $statusDescription"
-		   Write-Host "Error Description: $statusDescription" -ForegroundColor Red
 
-		}
-	
+#Clear Variable
+Clear-Variable get_str_cont	
+
 }
+
+
 
 #Check if Logs Directory Exists
 if(!(Test-Path -Path $PSScriptRoot\report))
