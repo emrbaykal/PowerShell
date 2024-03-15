@@ -22,6 +22,20 @@
 	AUTHOR  : Emre Baykal - HPE Services
 #>
 
+# Adjust Powershell Window Size
+$pshost = Get-Host              # Get the PowerShell Host.
+$pswindow = $pshost.UI.RawUI    # Get the PowerShell Host's UI.
+
+$newsize = $pswindow.BufferSize # Get the UI's current Buffer Size.
+$newsize.Width = 186            # Set the new buffer's width to 208 columns.
+$newsize.Height = 8000
+$pswindow.buffersize = $newsize # Set the new Buffer Size as active.
+
+$newsize = $pswindow.windowsize # Get the UI's current Window Size.
+$newsize.Width = 186            # Set the new Window Width to 208 columns.
+$newsize.Height = 50
+$pswindow.windowsize = $newsize # Set the new Window Size as active.
+
 # Skip SSL certificate validation
 add-type @"
     using System.Net;
@@ -120,6 +134,15 @@ function Create-Report {
          Authorization = "Basic {0}" -f ($token)
          "Content-Type"="application/json"
     }
+	
+	#Check if Logs Directory Exists
+	if(!(Test-Path -Path $PSScriptRoot\report))
+	{
+		#powershell create Report directory
+		Write-Host ""
+		$directory = New-Item -ItemType Directory -Path $PSScriptRoot\report
+		Write-Host "New reports directory $PSScriptRoot\Report created successfully..." -f Green
+	}
 
 	foreach($ip in $inputcsv.IP)
 	{
@@ -127,8 +150,6 @@ function Create-Report {
         $index = $inputcsv.IP.IndexOf($ip)
         $inputObject = New-Object System.Object
 		
-
-			
 			Write-Host ""
 			Log-Message "Server Information Started To Be Collected From $ip"
 		    Write-Host "Server Information Started To Be Collected From $ip"
@@ -150,9 +171,7 @@ function Create-Report {
 				 Log-Message "Get Chassis Info Failed From $ip"
 				 Write-Host "Get Chassis Info Failed From $ip" -ForegroundColor Red
 				 Log-Message "Error: $errorMessage"
-				 Write-Host "Error: $errorMessage" -ForegroundColor Red
 				 Log-Message "HTTP Status: $statusCode - $statusDescription"
-				 Write-Host "HTTP Status: $statusCode - $statusDescription" -ForegroundColor Red
 				 Log-Message "Stack Trace: $stackTrace"
 				 Log-Message "Inner Exception: $innerException"
 			 }	 
@@ -174,42 +193,23 @@ function Create-Report {
 				 Log-Message "Get Storage Controller Info Failed From $ip"
 				 Write-Host "Get Storage Controller Info From $ip" -ForegroundColor Red
 				 Log-Message "Error: $errorMessage"
-				 Write-Host "Error: $errorMessage" -ForegroundColor Red
 				 Log-Message "HTTP Status: $statusCode - $statusDescription"
-				 Write-Host "HTTP Status: $statusCode - $statusDescription" -ForegroundColor Red
 				 Log-Message "Stack Trace: $stackTrace"
 				 Log-Message "Inner Exception: $innerException"
 			 } 
 			 
 			foreach ($adapter in $get_str_cont.members ) {
-			  	  
-				$fullUri =  $ip + $adapter."@odata.id"
-                $disk_drivers = Invoke-RestMethod -Uri https://$fullUri -Method Get -Headers $headers
+			  	
+ 			    try { 
+				  $StrCont = $adapter."@odata.id" -split '/' | Select-Object -Last 1
+				  $fullUri =  $ip + $adapter."@odata.id"
+                  $disk_drivers = Invoke-RestMethod -Uri https://$fullUri -Method Get -Headers $headers
 				  
 					foreach ($drive in $disk_drivers.Drives) {
 					  
 					  $driveUri = $ip + $drive."@odata.id"
 					  
 					  $disk_drive = Invoke-RestMethod -Uri https://$driveUri -Method Get -Headers $headers 
-					  
-					  Write-Host ""
-					  Write-Host "-----------------Host: $ip -----------------------"
-					  
-					  Write-Host Host Ilo IP: $ip
-					  Write-Host Chassis Serial: $chasiss_serial
-					  Write-Host Chassis Model: $chasiss_model
-					  Write-Host Drive ID: $disk_drive.Id
-					  Write-Host Drive Name: $disk_drive.Name
-					  Write-Host Drive Model: $disk_drive.Model
-					  Write-Host Drive Serial Number: $disk_drive.SerialNumber
-					  Write-Host Drive Media Type: $disk_drive.MediaType
-					  if($disk_drive.MediaType -eq "SSD")  {
-					   Write-Host Drive Live %: $disk_drive.PredictedMediaLifeLeftPercent
-					  } else {
-					   Write-Host Drive Live %: N/A
-					  }
-					  Write-Host Drive Health Status: $disk_drive.Status.Health
-					  
 					  
 						# Create a custom object with the drive information
 						$driveInfo = [PSCustomObject]@{
@@ -229,22 +229,16 @@ function Create-Report {
 						$driveInfoList += $driveInfo
 
 				  }
+				 Write-Host "Get Disk State Collection Successfully From Controller: $StrCont" -ForegroundColor Green
+				} catch {
+					Log-Message "Get Disk State Collection Failed From Controller: $StrCont"
+				    Write-Host "Get Disk State Collection Failed From Controller: $StrCont" -ForegroundColor Red
 			   }
+	      }
 
 #Clear Variable
 Clear-Variable get_str_cont	
 
-}
-
-
-
-#Check if Logs Directory Exists
-if(!(Test-Path -Path $PSScriptRoot\report))
-{
-	#powershell create Report directory
-	Write-Host ""
-    $directory = New-Item -ItemType Directory -Path $PSScriptRoot\report
-	Write-Host "New reports directory $PSScriptRoot\Report created successfully..." -f Green
 }
 
 Write-Host ""
@@ -252,10 +246,21 @@ Write-Host "Creating a Report File Under The $PSScriptRoot\report Directory..." 
 # Export the drive information to a CSV file
 $driveInfoList | Export-Csv -Path "$PSScriptRoot\report\drive-information-$timestamp.csv" -NoTypeInformatio
 
+Write-Host "`n###########################################################################################################################"  -ForegroundColor White
+Write-Host "#                                             Host Storage Device Report                                                    #" -ForegroundColor White
+Write-Host "#############################################################################################################################`n" -ForegroundColor White
+
+# Display the results in a table format
+$driveInfoList | Format-Table -AutoSize
+
 }
 
 # script execution started
-Write-Host "****** ILO Disk State Reporting Script Execution Started ******`n" -ForegroundColor Yellow
+Write-Host "#############################################################################################################################"  -ForegroundColor White
+Write-Host "#                         HPE ILO Disk State Reporting Script Execution Started                                             #" -ForegroundColor White
+Write-Host "#                                           $timestamp                                                                       " -ForegroundColor White
+Write-Host "#############################################################################################################################`n" -ForegroundColor White
+
 
 # Initialize Credential
 Initialize-Credential | Out-Null
