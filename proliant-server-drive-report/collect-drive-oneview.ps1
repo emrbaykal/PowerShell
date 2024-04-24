@@ -204,47 +204,58 @@ function Create-Report {
 
 		 $get_server_hardware =Invoke-RestMethod -Uri $uri/rest/server-hardware -Method Get -Headers $headers 
 		 
-		 foreach ($server in $get_server_hardware.members ) {
-			   try {
-				$fullUri =  $uri + $server.subResources.LocalStorageV2.uri
-				$get_disk_drivers = Invoke-RestMethod -Uri $fullUri -Method Get -Headers $headers 
-				
-				   foreach ($disk_driver_data in $get_disk_drivers.data ) {
-					  foreach ($drive in $disk_driver_data.Drives) {
-								# Create a custom object with the drive information
-								$driveInfo = [PSCustomObject]@{
-									"ILO IP Address" = $server.mpHostInfo.mpIpAddresses[0].address
-									"Chassis Serial Number" = $server.serialNumber
-									"Chassis Model" = $server.shortModel
-									"Chassis Platform" = $server.platform
-									"Chassis Power" = $server.powerState
-									"Drive ID" = $drive.Id
-									"Drive Name" = $drive.Name
-									"Drive Model" = $drive.Model
-									"Drive Serial Number" = $drive.SerialNumber
-									"Drive State" = $drive.Status.State
-									"Drive Media Type" = $drive.MediaType
-									"Drive Health Status" = $drive.Status.Health
-									"Drive Live Percent %" = if ($drive.MediaType -eq "SSD") { $drive.PredictedMediaLifeLeftPercent } else { "N/A" }
+		    do {
+				foreach ($server in $get_server_hardware.members ) {
+					try {
+						$fullUri =  $uri + $server.subResources.LocalStorageV2.uri
+						$get_disk_drivers = Invoke-RestMethod -Uri $fullUri -Method Get -Headers $headers 
+						
+						foreach ($disk_driver_data in $get_disk_drivers.data ) {
+							foreach ($drive in $disk_driver_data.Drives) {
+										# Create a custom object with the drive information
+										$driveInfo = [PSCustomObject]@{
+											"ILO IP Address" = $server.mpHostInfo.mpIpAddresses[0].address
+											"Chassis Serial Number" = $server.serialNumber
+											"Chassis Model" = $server.shortModel
+											"Chassis Platform" = $server.platform
+											"Chassis Power" = $server.powerState
+											"Drive ID" = $drive.Id
+											"Drive Name" = $drive.Name
+											"Drive Model" = $drive.Model
+											"Drive Serial Number" = $drive.SerialNumber
+											"Drive State" = $drive.Status.State
+											"Drive Media Type" = $drive.MediaType
+											"Drive Health Status" = $drive.Status.Health
+											"Drive Live Percent %" = if ($drive.MediaType -eq "SSD") { $drive.PredictedMediaLifeLeftPercent } else { "N/A" }
 
+										}
+
+										# Add the custom object to the list
+										$driveInfoList.Add($driveInfo)
 								}
 
-								# Add the custom object to the list
-								$driveInfoList.Add($driveInfo)
-						 }
-
-				  }
-                
-				  $ChassisList.Add((Chassis-Report -server $server -DriveReportStatus "OK"))
+						}
+						
+						$ChassisList.Add((Chassis-Report -server $server -DriveReportStatus "OK"))
 
 
-		   		} catch {
-					Log-Message "Collect $server.mpHostInfo.mpIpAddresses[0].address Chassis Local Storage Information Failed From HPE Oneview"
-					$ChassisList.Add((Chassis-Report -server $server -DriveReportStatus "Fail"))
-					catch-error
-		   		}
-			
-		 }
+						} catch {
+							Log-Message "Collect $server.mpHostInfo.mpIpAddresses[0].address Chassis Local Storage Information Failed From HPE Oneview"
+							$ChassisList.Add((Chassis-Report -server $server -DriveReportStatus "Fail"))
+							catch-error
+						}
+					
+				}
+
+				# Update for pagination
+				$get_server_hardware = if ($get_server_hardware.nextPageUri) {
+					$nexpagelUri =  $uri + $get_server_hardware.nextPageUri
+					Invoke-RestMethod -Uri $nexpagelUri -Method Get -Headers $headers
+				} else {
+					$null  # Exit the loop when there are no more pages
+				}
+	
+			} while ($get_server_hardware) 
 
          Log-Message "Collected Server Informations Successfully From HPE Oneview"
 	     Write-Host "Collected Server Information Successfully From HPE Oneview" -ForegroundColor Green
