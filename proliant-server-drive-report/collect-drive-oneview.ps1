@@ -159,24 +159,26 @@ function Chassis-Report {
    
 	param (
         [Parameter(Mandatory=$true)]
-        $server,
+        [object[]]$servers,
 		[string]$DriveReportStatus = "OK"
     )
 
-	$ChassisList = @()
+	$ChassisList = New-Object 'System.Collections.Generic.List[object]'
 
-	$ChassisInfo = [PSCustomObject]@{
-		"ILO IP Address" = $server.mpHostInfo.mpIpAddresses[0].address
-		"Chassis Serial Number" = $server.serialNumber
-		"Chassis Model" = $server.shortModel
-		"Chassis Platform" = $server.platform
-		"Chassis Power" = $server.powerState
-		"Chassis Drive Report" = $DriveReportStatus
+	foreach ($server in $servers) {
+			$ChassisInfo = [PSCustomObject]@{
+				"ILO IP Address" = $server.mpHostInfo.mpIpAddresses[0].address
+				"Chassis Serial Number" = $server.serialNumber
+				"Chassis Model" = $server.shortModel
+				"Chassis Platform" = $server.platform
+				"Chassis Power" = $server.powerState
+				"Chassis Drive Report" = $DriveReportStatus
 
+			}
+        
+		# Add the custom object to the list
+        $ChassisList.Add($ChassisInfo)
 	}
-
-	# Add the custom object to the list
-	$ChassisList += $ChassisInfo
     return $ChassisList
 }
 
@@ -184,8 +186,8 @@ function Chassis-Report {
 function Create-Report {
 
 	$headers = Get-AuthToken
-	$driveInfoList = @()
-	$ChassisList = @()
+	$driveInfoList = New-Object 'System.Collections.Generic.List[object]'
+    $ChassisList = New-Object 'System.Collections.Generic.List[object]'
 
 	#Check if Logs Directory Exists
 	if(!(Test-Path -Path $PSScriptRoot\report))
@@ -228,17 +230,17 @@ function Create-Report {
 								}
 
 								# Add the custom object to the list
-								$driveInfoList += $driveInfo
+								$driveInfoList.Add($driveInfo)
 						 }
 
 				  }
                 
-				  $ChassisList += Chassis-Report -server $server -DriveReportStatus "OK"
+				  $ChassisList.Add((Chassis-Report -server $server -DriveReportStatus "OK"))
 
 
 		   		} catch {
 					Log-Message "Collect $server.mpHostInfo.mpIpAddresses[0].address Chassis Local Storage Information Failed From HPE Oneview"
-					$ChassisList += Chassis-Report -server $server -DriveReportStatus "Fail"
+					$ChassisList.Add((Chassis-Report -server $server -DriveReportStatus "Fail"))
 					catch-error
 		   		}
 			
