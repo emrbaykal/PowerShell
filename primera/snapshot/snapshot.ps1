@@ -1,8 +1,3 @@
-param (
-    [Parameter(Mandatory=$true)]
-    [string]$ConfigFilePath
-)
-
 <#
 .Synopsis
     This PowerShell script includes functions for interacting with a storage system API to perform operations 
@@ -10,7 +5,7 @@ param (
 
 	   
 .Prerequisites
-    PowerShell 5.1 or later.
+    PowerShell 7.0 or later.
     Access to an HPE Primera or compatible storage system's API.
     Valid credentials for the storage system.
 	   
@@ -22,17 +17,27 @@ param (
 	Always run the PowerShell in administrator mode to execute the script.
 	
     Company : Hewlett Packard Enterprise
-    Version : 1.0.0.0
-    Date    : 04/03/2024
+    Version : 2.1.0.0
+    Date    : 17/07/2024
 	AUTHOR  : Emre Baykal - HPE Services
 #>
+#Requires -Version 7
+
+param (
+    [Parameter(Mandatory=$true)]
+    [string]$ConfigFilePath
+)
 
 # Skip SSL certificate validation
 [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
 
+# Set TLS version
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+
 # Check if the config file exists
 if (-Not (Test-Path -Path $ConfigFilePath)) {
-    Write-Error "Configuration file not found at path: $ConfigFilePath"
+    Write-Host "Configuration file not found at path: $ConfigFilePath" -ForegroundColor Red
     exit
 }
 
@@ -60,7 +65,7 @@ function Initialize-Credential {
 	if (-Not (Test-Path $credFile)) {
 		# Prompt the user for credentials
 		$Cred = Get-Credential -Message 'Enter Storage Credentials'  | Export-Clixml "$PSScriptRoot\cred.XML"
-		Write-Host "Credentials saved to $credFile."
+		Write-Host "Credentials saved to $credFile.`n" -ForegroundColor Green
 			 
 	}
 
@@ -78,7 +83,7 @@ function Get-AuthToken {
 		user = $Credential.UserName
 		password = $Credential.GetNetworkCredential().Password
 		sessionType = 1
-	} | ConvertTo-Json) -ContentType "application/json"
+	} | ConvertTo-Json) -ContentType "application/json" -SkipCertificateCheck
 
 	$headers = @{
 				"X-HP3PAR-WSAPI-SessionKey"=($auth_token.key)
@@ -90,62 +95,111 @@ function Get-AuthToken {
 
 ####### Delete & Un-Assign VLUN ########## 
 function Delete-Vlun {
-	$headers = Get-AuthToken
+    $headers = Get-AuthToken
+    
+	Write-Host "Snapshot Vlun Deletion Process Start ..." -ForegroundColor White
 	
-	$volumeGroups | ForEach-Object {
-		$SnapName = $_.snapshotName
-		$SnapLunId = $_.snapVlunId
-		$HostSet = $_.hostSet
-		$delete_vlun_uri ="$uri/vluns/$SnapName,$SnapLunId,$HostSet"
+    $volumeGroups | ForEach-Object {
+        $SnapName = $_.snapshotName
+        $SnapLunId = $_.snapVlunId
+        $HostSet = $_.hostSet
+        $delete_vlun_uri = "$uri/vluns/$SnapName,$SnapLunId,$HostSet"
 		
-			try {
-			   # Invoke the REST API with DELETE method
-			   $delete_vlun = Invoke-RestMethod -Uri $delete_vlun_uri -Method Delete -Headers $headers -Body (@{ } | ConvertTo-Json)
-			   Log-Message "Vlun $SnapName Deletion Successfully"
-			} catch {
-			   $statusCode = $_.Exception.Response.StatusCode.Value__
-			   $statusDescription =  $_.Exception.Response.StatusDescription
-			   Log-Message "Vlun $SnapName deletion failed with status: $statusDescription"
+        
+        try {
+             
+			$check_vlun = Invoke-RestMethod -Uri $delete_vlun_uri -Method Get -Headers $headers -SkipCertificateCheck
+  
+                try {
+                    # Invoke the REST API with DELETE method
+                    $delete_vlun = Invoke-RestMethod -Uri $delete_vlun_uri -Method Delete -Headers $headers -Body (@{ } | ConvertTo-Json) -SkipCertificateCheck
+                    Log-Message "Vlun $SnapName Deletion Successfully"
+                    Write-Host "Vlun $SnapName Deletion Successfully" -ForegroundColor Green
+                } catch {
+                    $statusCode = $_.Exception.Response.StatusCode.Value__
+                    $statusDescription = $_.Exception.Response.StatusDescription
+                    Log-Message "Vlun $SnapName deletion failed with status: $statusDescription"
+					Log-Message "Vlun $SnapName deletion Error Occurred: $_"
+                    Write-Host "Vlun $SnapName deletion failed with status: $statusDescription" -ForegroundColor Red
+                    Write-Verbose "Vlun $SnapName deletion Error Occurred: $_"
+                    throw
+                }
+       
+        } catch {
+            Log-Message "Vlun $SnapName does not exists. Skipping deletion !!"
+            Write-Host "Vlun $SnapName does not exists. Skipping deletion !!" -ForegroundColor Yellow
 
-			}
-	}
-	# Wait 5 Sec
-	Start-Sleep -Seconds 5
+        }
+    }
+    # Wait 5 Sec
+    Start-Sleep -Seconds 5
 }
 
 ####### Delete Application Set ##########
 function Delete-AppSet {
 	$headers = Get-AuthToken
 	
+	Write-Host "`nApplicationSet Deletion Process Start ..." -ForegroundColor White
+	
 	try {
-		 $delete_appset =Invoke-RestMethod -Uri $uri/volumesets/$applicationset -Method Delete -Headers $headers -Body (@{ } | ConvertTo-Json)
-		 Log-Message "ApplicationSet $applicationset Deleted Successfully"
+		  # Check if the LUN exists
+           $check_appset = Invoke-RestMethod -Uri $uri/volumesets/$applicationset -Method Get -Headers $headers -SkipCertificateCheck
+			
+				try {
+					 $delete_appset =Invoke-RestMethod -Uri $uri/volumesets/$applicationset -Method Delete -Headers $headers -Body (@{ } | ConvertTo-Json) -SkipCertificateCheck
+					 Log-Message "ApplicationSet $applicationset Deleted Successfully"
+					 Write-Host "ApplicationSet $applicationset Deleted Successfully" -ForegroundColor Green
+				} catch {
+					 $statusCode = $_.Exception.Response.StatusCode.Value__
+					 $statusDescription =  $_.Exception.Response.StatusDescription
+					 Log-Message "ApplicationSet $applicationset deletion failed with status: $statusDescription"
+					 Log-Message "ApplicationSet $applicationset deletion Error Occurred: $_"
+					 Write-Host "ApplicationSet $applicationset deletion failed with status: $statusDescription" -ForegroundColor Red
+					 Write-Verbose "ApplicationSet $applicationset deletion Error Occurred: $_"
+					 throw
+				}
+				# Wait 5 Sec
+				Start-Sleep -Seconds 5
+	
 	} catch {
-		 $statusCode = $_.Exception.Response.StatusCode.Value__
-		 $statusDescription =  $_.Exception.Response.StatusDescription
-		 Log-Message "ApplicationSet $applicationset deletion failed with status: $statusDescription"
-	}
-	# Wait 5 Sec
-	Start-Sleep -Seconds 5
+            Log-Message "ApplicationSet $applicationset does not exists. Skipping deletion !!"
+            Write-Host "ApplicationSet $applicationset does not exists. Skipping deletion !!" -ForegroundColor Yellow
+
+    }
 }
 
 ####### Delete Snapshots ########## 
 function Delete-Snapshot {
 	$headers = Get-AuthToken
 	
+	Write-Host "`nSnapshot Deletion Process Start ..." -ForegroundColor White
+	
 	$volumeGroups | ForEach-Object {
 	$SnapName = $_.snapshotName
 	$delete_snap_uri ="$uri/volumes/$SnapName"
    
-		try {
-		   # Invoke the REST API with DELETE method
-		   $delete_snap =Invoke-RestMethod -Uri $delete_snap_uri -Method Delete -Headers $headers -Body (@{ } | ConvertTo-Json)
-		   Log-Message "Snapshot $SnapName Deleted Successfully"
-		} catch {
-		   $statusCode = $_.Exception.Response.StatusCode.Value__
-		   $statusDescription =  $_.Exception.Response.StatusDescription
-		   Log-Message "Snapshot $SnapName deletion failed with status: $statusDescription"
-		}
+            try {
+				
+				$check_snap = Invoke-RestMethod -Uri $delete_snap_uri -Method Get -Headers $headers -SkipCertificateCheck
+				
+				try {
+				   # Invoke the REST API with DELETE method
+				   $delete_snap =Invoke-RestMethod -Uri $delete_snap_uri -Method Delete -Headers $headers -Body (@{ } | ConvertTo-Json) -SkipCertificateCheck
+				   Log-Message "Snapshot $SnapName Deleted Successfully"
+				   Write-Host "Snapshot $SnapName Deleted Successfully" -ForegroundColor Green
+				} catch {
+				   $statusCode = $_.Exception.Response.StatusCode.Value__
+				   $statusDescription =  $_.Exception.Response.StatusDescription
+				   Log-Message "Snapshot $SnapName deletion failed with status: $statusDescription"
+				   Log-Message "Snapshot $SnapName deletion Error Occurred: $_"
+				   Write-Host "Snapshot $SnapName deletion failed with status: $statusDescription" -ForegroundColor Red
+				   Write-Verbose "Snapshot $SnapName deletion Error Occurred: $_"
+				   throw
+				}
+			} catch {
+            Log-Message "Snapshot $SnapName does not exists. Skipping deletion !!"
+            Write-Host "Snapshot $SnapName does not exists. Skipping deletion !!" -ForegroundColor Yellow
+        }
     }
 # Wait 30 Sec
 Start-Sleep -Seconds 30
@@ -154,6 +208,8 @@ Start-Sleep -Seconds 30
 ####### Create Snapshot ########## 
 function Create-Snapshot {
 	$headers = Get-AuthToken
+	
+	Write-Host "`nSnapshot Creation Process Start ..." -ForegroundColor White
 	
 	$create_snap_body = @{
 		action = 8
@@ -173,14 +229,18 @@ function Create-Snapshot {
 	}
 
 	try {
-		 $create_snap = Invoke-RestMethod -Uri $uri/volumes -Method Post -Headers $headers -Body ($create_snap_body | ConvertTo-Json -Depth 10) 
+		 $create_snap = Invoke-RestMethod -Uri $uri/volumes -Method Post -Headers $headers -Body ($create_snap_body | ConvertTo-Json -Depth 10) -SkipCertificateCheck
 	} catch {
 		$statusCode = $_.Exception.Response.StatusCode.value__
 		if ($statusCode -eq 300) {
-		   Log-Message "Snapshot Created Successfully"
+		   Log-Message "Snapshots Created Successfully"
+		   Write-Host "Snapshots Created Successfully" -ForegroundColor Green
 		} else {
 		   $statusDescription =  $_.Exception.Response.StatusDescription
 		   Log-Message "Snapshot Creation failed with status: $statusDescription"
+		   Log-Message "Snapshot Creation failed: $_"
+		   Write-Host "Snapshot Creation failed with status: $statusDescription" -ForegroundColor Red
+		   Write-Verbose "Snapshot Creation failed: $_"
 		}
 	}
 # Wait 5 Sec
@@ -191,6 +251,8 @@ Start-Sleep -Seconds 5
 function Create-Vlun {
 	$headers = Get-AuthToken
 	
+	Write-Host "`nCreate & Assign VLUN Process Start ..." -ForegroundColor White
+	
 	$volumeGroups | ForEach-Object {
 		$create_snap_body =  @{
 			  volumeName = $_.snapshotName
@@ -200,15 +262,41 @@ function Create-Vlun {
 			
 		$SnapName = $_.snapshotName
 		try {
-		   $create_vlun = Invoke-RestMethod -Uri $uri/vluns -Method Post -Headers $headers -Body ($create_snap_body | ConvertTo-Json -Depth 10)
+		   $create_vlun = Invoke-RestMethod -Uri $uri/vluns -Method Post -Headers $headers -Body ($create_snap_body | ConvertTo-Json -Depth 10) -SkipCertificateCheck
 		   Log-Message "Create & Assign VLUN $SnapName Successfully"
+		   Write-Host "Create & Assign VLUN $SnapName Successfully" -ForegroundColor Green
 		} catch {
 		   $statusCode = $_.Exception.Response.StatusCode.Value__
 		   $statusDescription =  $_.Exception.Response.StatusDescription
 		   Log-Message "VLUN $SnapName Creation failed with status: $statusDescription"
+		   Log-Message "VLUN $SnapName Creation failed: $_"
+		   Write-Host "VLUN $SnapName Creation failed with status: $statusDescription" -ForegroundColor Red
+		   Write-Verbose "VLUN $SnapName Creation failed: $_"
 		}
 	}
 }
+
+###### Clear all user session environment variables ######
+function Clear-UserSessionEnvironmentVariables {
+    Write-Verbose "Clearing user session environment variables..."
+    
+    # Get all environment variables for the current user session
+    $userEnvVars = Get-ChildItem Env:
+    
+    # Loop through each environment variable and remove it
+    foreach ($envVar in $userEnvVars) {
+        Write-Verbose "Removing environment variable: $($envVar.Name)"
+        Remove-Item -Path "Env:$($envVar.Name)"
+    }
+
+    Write-Output "`nUser session environment variables cleared."
+}
+
+Write-Host "`n####################################################################"
+Write-Host "#                  HPE Primera LUN Snaphot                         #"
+Write-Host "####################################################################`n"
+
+Write-Host "Effective TLS setting: $([Net.ServicePointManager]::SecurityProtocol)`n"
 
 # Initialize Credential
 Initialize-Credential | Out-Null
@@ -233,3 +321,6 @@ Create-Snapshot
 
 # Create & Assign VLun
 Create-Vlun
+
+# Clean User Envşronment Varibales
+Clear-UserSessionEnvironmentVariables
