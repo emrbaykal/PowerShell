@@ -5,6 +5,17 @@
 	
 	## Define the path to the credential file
     credFile = '$PSScriptRoot\cred.XML'
+
+    ## Define Application set
+    applicationset = 'SQL-DB-SNAP'
+	
+    ## Define Snapshot Comment
+    snapcomment = 'SQL Database LUNs Daily Snapshot'
+        
+    ## Define E-Mail Parameters
+    emailTo = 'emre.baykal@hpe.com'
+    emailFrom = 'emre.baykal@hpe.com'
+    SmtpServer = 'smtp.fabrikam.com'
 	
 	## Define Snapshot Volume Groups
     volumeGroups = @(
@@ -64,9 +75,5 @@
         }
     )
 	
-	## Define Application set
-    applicationset = 'SQL-DB-SNAP'
-	
-	## Define Snapshot Comment
-    snapcomment = 'SQL Database LUNs Daily Snapshot'
+
 }

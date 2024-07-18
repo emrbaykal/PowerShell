@@ -34,6 +34,9 @@ param (
 # Set TLS version
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
+# Silent Warring Actions
+$WarningPreference = "SilentlyContinue"
+
 
 # Check if the config file exists
 if (-Not (Test-Path -Path $ConfigFilePath)) {
@@ -50,6 +53,10 @@ $credFile = $configData['credFile'].Replace('$PSScriptRoot', $PSScriptRoot)
 $volumeGroups = $configData['volumeGroups']
 $applicationset = $configData['applicationset']
 $snapcomment = $configData['snapcomment']
+$emailBody = "<html><body><h2>HPE Primera Storage Snapshot Process</h2><ul>"
+$emailTo = $configData['emailTo']
+$emailFrom = $configData['emailFrom']
+$SmtpServer = $configData['SmtpServer']
 
 ## Initilize Log File
 function Log-Message {
@@ -58,6 +65,7 @@ function Log-Message {
     )
     $timestamp = Get-Date -Format "yyyy-MM-dd HH:mm:ss"
     "$timestamp $Message" | Out-File -FilePath "$PSScriptRoot\hpe-primera.log" -Append
+	 $script:emailBody += "<li>$timestamp $Message</li>"
 }
 
 function Initialize-Credential {
@@ -98,6 +106,7 @@ function Delete-Vlun {
     $headers = Get-AuthToken
     
 	Write-Host "Snapshot Vlun Deletion Process Start ..." -ForegroundColor White
+	Log-Message "Snapshot Vlun Deletion Process Start ..."
 	
     $volumeGroups | ForEach-Object {
         $SnapName = $_.snapshotName
@@ -140,6 +149,7 @@ function Delete-AppSet {
 	$headers = Get-AuthToken
 	
 	Write-Host "`nApplicationSet Deletion Process Start ..." -ForegroundColor White
+	Log-Message "ApplicationSet Deletion Process Start ..."
 	
 	try {
 		  # Check if the LUN exists
@@ -173,6 +183,7 @@ function Delete-Snapshot {
 	$headers = Get-AuthToken
 	
 	Write-Host "`nSnapshot Deletion Process Start ..." -ForegroundColor White
+	Log-Message "Snapshot Deletion Process Start ..."
 	
 	$volumeGroups | ForEach-Object {
 	$SnapName = $_.snapshotName
@@ -210,6 +221,7 @@ function Create-Snapshot {
 	$headers = Get-AuthToken
 	
 	Write-Host "`nSnapshot Creation Process Start ..." -ForegroundColor White
+	Log-Message "Snapshot Creation Process Start ..."
 	
 	$create_snap_body = @{
 		action = 8
@@ -252,6 +264,7 @@ function Create-Vlun {
 	$headers = Get-AuthToken
 	
 	Write-Host "`nCreate & Assign VLUN Process Start ..." -ForegroundColor White
+	Log-Message "Create & Assign VLUN Process Start ..."
 	
 	$volumeGroups | ForEach-Object {
 		$create_snap_body =  @{
@@ -292,6 +305,22 @@ function Clear-UserSessionEnvironmentVariables {
     Write-Output "`nUser session environment variables cleared."
 }
 
+function e-mail {
+    # Finalize email body
+	$script:emailBody += "</ul></body></html>"
+
+    # Send email
+	$sendMailMessageSplat = @{
+    From = $emailFrom
+    To = $emailTo
+    Subject = $snapcomment
+    Body = $script:emailBody
+    SmtpServer = $SmtpServer
+    }
+    Send-MailMessage @sendMailMessageSplat
+
+}
+
 Write-Host "`n####################################################################"
 Write-Host "#                  HPE Primera LUN Snaphot                         #"
 Write-Host "####################################################################`n"
@@ -322,5 +351,9 @@ Create-Snapshot
 # Create & Assign VLun
 Create-Vlun
 
-# Clean User Envşronment Varibales
+# Send Mail
+e-mail
+
+# Clean User Environment Varibales
 Clear-UserSessionEnvironmentVariables
+
