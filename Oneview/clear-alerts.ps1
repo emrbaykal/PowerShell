@@ -49,7 +49,7 @@ $logtimestamp = Get-Date -Format "dd MM hh:mm:ss"
 # Alert Reporting Direcory
 $reportpath = "$PSScriptRoot\report\current-alerts-$timestamp.csv"
 
-#Clear-Host
+Clear-Host
 
 ## Initilize Log File
 function Log-Message {
