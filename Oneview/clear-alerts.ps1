@@ -1,7 +1,6 @@
 <#
 .Synopsis
-    This PowerShell script includes functions for interacting with a HPE Proliant Servers API 
-	to perform create disk and storage units reports.
+    This PowerShell script includes functions for Clear and Report Oneview Alerts
 
 	   
 .Prerequisites
