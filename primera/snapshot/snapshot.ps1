@@ -223,22 +223,31 @@ function Create-Snapshot {
 	Write-Host "`nSnapshot Creation Process Start ..." -ForegroundColor White
 	Log-Message "Snapshot Creation Process Start ..."
 	
-	$create_snap_body = @{
-		action = 8
-		parameters = @{
-		volumeGroup = $volumeGroups | ForEach-Object {
-			@{
-				volumeName = $_.volumeName
-				snapshotName = $_.snapshotName
-				snapshotId = $_.snapshotId
-				snapshotWWN = $_.snapshotWWN
-				readWrite = $_.readWrite
-			}
-		}
-		comment	= $snapcomment
-		addToSet = $applicationset
-		}
-	}
+  # Ensure volumeGroups is treated as an array
+    if ($null -ne $volumeGroups -and -not ($volumeGroups -is [Array])) {
+        $volumeGroups = @($volumeGroups)
+    }
+    
+    $volumeGroupArray = @()
+    foreach ($volumeGroup in $volumeGroups) {
+        $volumeGroupArray += @{
+            volumeName = $volumeGroup.volumeName
+            snapshotName = $volumeGroup.snapshotName
+            snapshotId = $volumeGroup.snapshotId
+            snapshotWWN = $volumeGroup.snapshotWWN
+            readWrite = $volumeGroup.readWrite
+        }
+    }
+
+    $create_snap_body = @{
+        action = 8
+        parameters = @{
+            volumeGroup = $volumeGroupArray
+            comment = $snapcomment
+            addToSet = $applicationset
+        }
+    }
+
 
 	try {
 		 $create_snap = Invoke-RestMethod -Uri $uri/volumes -Method Post -Headers $headers -Body ($create_snap_body | ConvertTo-Json -Depth 10) -SkipCertificateCheck
