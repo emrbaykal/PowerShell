@@ -82,11 +82,30 @@ function Load-Modules {
 	 if(-not($ModuleNames -like "HPESimpliVity") -or -not($ModuleNames -like "VMware.VimAutomation.Core") -or -not($ModuleNames -like "Posh-SSH"))
 	 {
 		 Write-Host "Copying Modules to C:\Users\$($Env:UserName)\Documents\WindowsPowerShell\Modules Directory.. " -ForegroundColor Yellow
-		 New-Item -ItemType Directory "C:\Users\$($Env:UserName)\Documents\WindowsPowerShell\Modules"  | Out-Null 
-		 Copy-Item -Path "$PSScriptRoot\PowerShell-Modules\*" -Destination "C:\Users\$($Env:UserName)\Documents\WindowsPowerShell\Modules" -Recurse -ErrorVariable capturedErrors -ErrorAction SilentlyContinue
+		 if (-Not (Test-Path "C:\Users\$($Env:UserName)\Documents\WindowsPowerShell\Modules")) {
+			 New-Item -ItemType Directory "C:\Users\$($Env:UserName)\Documents\WindowsPowerShell\Modules" | Out-Null
+		 }
+		 if (Test-Path "$PSScriptRoot\PowerShell-Modules") {
+		 try {
+			 Set-PowerCLIConfiguration -Scope User -ParticipateInCEIP $False -Confirm:$false | Out-Null
+		 } catch {
+		 try {
+			 Import-Module HPESimpliVity -ErrorAction Stop
+			 Import-Module VMware.VimAutomation.Core -ErrorAction Stop
+			 Import-Module Posh-SSH -ErrorAction Stop
+		 } catch {
+			 Write-Host "Error loading modules: $_" -ForegroundColor Red
+			 break
+		 }
+			 break
+		 }
+		 } else {
+			 Write-Host "PowerShell-Modules directory not found. Ensure the required modules are available." -ForegroundColor Red
+			 break
+		 }
 		 $capturedErrors | foreach-object { if ($_ -notmatch "already exists") { write-error $_ } }
 		 Get-ChildItem -Path "C:\Users\$Env:UserName\Documents\WindowsPowerShell\Modules\*" -Recurse | Unblock-File
-         Set-PowerCLIConfiguration -Scope User -ParticipateInCEIP $False -Confirm:$false | Out-Null
+        # Set-PowerCLIConfiguration -Scope User -ParticipateInCEIP $False -Confirm:$false | Out-Null
 		 
 		 Write-Host "Loading modules :  HPESimpliVity ,VMware.VimAutomation.Core, Posh-SSH " -ForegroundColor Yellow
 		 Import-Module HPESimpliVity, VMware.VimAutomation.Core, Posh-SSH
@@ -172,7 +191,7 @@ function Invoke-SVT {
 	 #Reports Directory
 	 $global:ReportDirPath= "$PSScriptRoot\Reports"
  
-	 #Load Requşred Powershell Modules
+	 #Load Required Powershell Modules
 	 Load-Modules
  
 	 # Check if the credential file already exists
