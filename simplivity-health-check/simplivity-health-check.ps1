@@ -40,8 +40,8 @@
 	Always run the PowerShell in administrator mode to execute the script.
 	
     Company : Hewlett Packard Enterprise
-    Version : 2.2.0.0
-    Date    : 20/06/2025
+    Version : 3.2.0.0
+    Date    : 06/20/2025
 	AUTHOR  : Emre Baykal - HPE Services
 #>
 
@@ -82,30 +82,11 @@ function Load-Modules {
 	 if(-not($ModuleNames -like "HPESimpliVity") -or -not($ModuleNames -like "VMware.VimAutomation.Core") -or -not($ModuleNames -like "Posh-SSH"))
 	 {
 		 Write-Host "Copying Modules to C:\Users\$($Env:UserName)\Documents\WindowsPowerShell\Modules Directory.. " -ForegroundColor Yellow
-		 if (-Not (Test-Path "C:\Users\$($Env:UserName)\Documents\WindowsPowerShell\Modules")) {
-			 New-Item -ItemType Directory "C:\Users\$($Env:UserName)\Documents\WindowsPowerShell\Modules" | Out-Null
-		 }
-		 if (Test-Path "$PSScriptRoot\PowerShell-Modules") {
-		 try {
-			 Set-PowerCLIConfiguration -Scope User -ParticipateInCEIP $False -Confirm:$false | Out-Null
-		 } catch {
-		 try {
-			 Import-Module HPESimpliVity -ErrorAction Stop
-			 Import-Module VMware.VimAutomation.Core -ErrorAction Stop
-			 Import-Module Posh-SSH -ErrorAction Stop
-		 } catch {
-			 Write-Host "Error loading modules: $_" -ForegroundColor Red
-			 break
-		 }
-			 break
-		 }
-		 } else {
-			 Write-Host "PowerShell-Modules directory not found. Ensure the required modules are available." -ForegroundColor Red
-			 break
-		 }
+		 New-Item -ItemType Directory "C:\Users\$($Env:UserName)\Documents\WindowsPowerShell\Modules"  | Out-Null 
+		 Copy-Item -Path "$PSScriptRoot\PowerShell-Modules-2025\*" -Destination "C:\Users\$($Env:UserName)\Documents\WindowsPowerShell\Modules" -Recurse -ErrorVariable capturedErrors -ErrorAction SilentlyContinue
 		 $capturedErrors | foreach-object { if ($_ -notmatch "already exists") { write-error $_ } }
 		 Get-ChildItem -Path "C:\Users\$Env:UserName\Documents\WindowsPowerShell\Modules\*" -Recurse | Unblock-File
-        # Set-PowerCLIConfiguration -Scope User -ParticipateInCEIP $False -Confirm:$false | Out-Null
+         #Set-PowerCLIConfiguration -Scope User -ParticipateInCEIP $False -Confirm:$false | Out-Null
 		 
 		 Write-Host "Loading modules :  HPESimpliVity ,VMware.VimAutomation.Core, Posh-SSH " -ForegroundColor Yellow
 		 Import-Module HPESimpliVity, VMware.VimAutomation.Core, Posh-SSH
@@ -191,7 +172,7 @@ function Invoke-SVT {
 	 #Reports Directory
 	 $global:ReportDirPath= "$PSScriptRoot\Reports"
  
-	 #Load Required Powershell Modules
+	 #Load Requşred Powershell Modules
 	 Load-Modules
  
 	 # Check if the credential file already exists
@@ -715,7 +696,7 @@ function Test-Net-Connection($destination)  {
 			  
              # Shows Datacenter has Intelligent Workload Optimizer enabled or disabled ?
 			 Write-Host "`n### Intelligent Workload Optimizer State ###`n" -ForegroundColor White
-			 $SvtIntWorkCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-iwo-show --datacenter $($selecteddcname) --cluster $($selectedclsname)"
+			 $SvtIntWorkCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-iwo-show --datacenter `"$($selecteddcname)`" --cluster `"$($selectedclsname)`""
 			 $SvtIntWork = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtIntWorkCmd  -TimeOut 60
 			 $SvtIntWork.Output  
 			 
@@ -841,7 +822,7 @@ function Test-Net-Connection($destination)  {
                 $VMSnapshotReport | Format-Table -Property 'VM Name', 'Snapshot Name', 'Snapshot Creation Date', 'Snapshot Description'
             }
             else {
-                Write-Host "`nNo Snapshots older than $($snapshotdays)" 
+                Write-Host "`nNo Snapshots older than $($snapshotdays) days" 
             }
 			
 			 $BackupPolicies  = Get-SvtPolicy -Raw | ConvertFrom-Json
@@ -941,7 +922,7 @@ function Test-Net-Connection($destination)  {
 			 
 			 # Display Support State
 			 Write-Host "`n### Datacenter Support Reg. State ###`n" -ForegroundColor White
-			 $SvtSupportCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-support-show"
+			 $SvtSupportCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-support-show --datacenter `"$($selecteddcname)`" --cluster `"$($selectedclsname)`""
 			 $SvtSupport = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtSupportCmd  -TimeOut 60
 			 $SvtSupport.Output
 				   
@@ -1001,10 +982,12 @@ function Test-Net-Connection($destination)  {
 				 $memusage = $null
 				 $shutdownstatecheck = $null
 				 # Get ESXI Host Infromation
-				 $esxihost = Get-VMHost -Name $svthost.name  | Select-Object -Property NumCpu, CpuTotalMhz, CpuUsageMhz, MemoryTotalGB, MemoryUsageGB, Version, Build 
+				 $esxihost = Get-VMHost -Name $svthost.name  | Select-Object -Property NumCpu, CpuTotalMhz, CpuUsageMhz, MemoryTotalGB, MemoryUsageGB, Version, Build, @{N="BIOS_Major_Release";E={$_.ExtensionData.Hardware.BiosInfo.MajorRelease}}, @{N="BIOS_Minor_Rlease";E={$_.ExtensionData.Hardware.BiosInfo.MinorRelease}}, @{N="BIOS_ReleaseDate";E={$_.ExtensionData.Hardware.BiosInfo.ReleaseDate}}
+         $esxihostmgmtip = Get-VMHost -Name $svthost.name | Select-Object -ExpandProperty ExtensionData | ForEach-Object { $_.Config.Network.Vnic[0].Spec.Ip.IpAddress }
+         $esxibmcip = (Get-EsxCli -VMHost $svthost.name -V2).hardware.ipmi.bmc.get.Invoke().IPv4Address 
 				 $percentCpu = $(($esxihost.CpuUsageMhz / $esxihost.CpuTotalMhz ) * 100).ToString("F0")
 				 $percentMem = $(($esxihost.MemoryUsageGB / $esxihost.MemoryTotalGB ) * 100).ToString("F0")	
-                 $NetTestCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-network-test --datacenter $($selecteddcname) --cluster $($selectedclsname)"  
+                 $NetTestCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-network-test --datacenter `"$($selecteddcname)`" --cluster `"$($selectedclsname)`""  
 				 $ServiceStateCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-managed-service-show"
 				 $cfgdbstateCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-cfgdb-get-sync-status"
 				 $NetStateCmd = "/bin/netstat -win"	
@@ -1036,7 +1019,7 @@ function Test-Net-Connection($destination)  {
                  Write-Host "`n#### SVT Host Summary: $($svthost.name) ####`n" -ForegroundColor White				 
 				 
 				 Write-Host "`nSVT Host Name:               $($svthost.name)"
-				 Write-Host "SVT Host IP:                 $($svthost.hypervisor_management_system)"
+				 Write-Host "SVT Host IP:                 $($esxihostmgmtip)"
 				 if ($svthost.state -eq 'ALIVE') {
 					 Write-Host "SVT Host State:              $($svthost.state)" 
 				 }else {
@@ -1111,7 +1094,11 @@ function Test-Net-Connection($destination)  {
 				 
 				 Write-Host "`nModel Number:                $($hosthwinfo.host.model_number)"
 				 Write-Host "Serial Number:               $($hosthwinfo.host.serial_number)"
-				 Write-Host "Firmware Revision:           $($hosthwinfo.host.firmware_revision)"
+         Write-Host "ILO Management IP:           $($esxibmcip)"
+         Write-Host "SVT Host BIOS Release Date:  $($esxihost.BIOS_ReleaseDate)"
+         Write-Host "SVT Host BIOS Release:       $($esxihost.BIOS_Major_Release).$($esxihost.BIOS_Minor_Rlease)"
+				 Write-Host "Simplivity Firmware Vers:    $($hosthwinfo.host.firmware_revision)"
+                                     
 				 if ($hosthwinfo.host.status -eq 'GREEN') {
 					 Write-Host "Hardware Status:             HEALTHY"
 				 }else {
@@ -1266,7 +1253,7 @@ function Test-Net-Connection($destination)  {
 			 Write-Host "#                                                Capture Balance File                                                       #" -ForegroundColor Yellow
 			 Write-Host "#############################################################################################################################`n" -ForegroundColor Yellow
  
-			 $sshbalance = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-balance-manual --datacenter $($selecteddcname) --cluster $($selectedclsname)"
+			 $sshbalance = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-balance-manual --datacenter `"$($selecteddcname)`" --cluster `"$($selectedclsname)`""
 			 $sshmovebalance = 'sudo find /tmp/balance/replica_distribution_file*.csv -maxdepth 1 -type f -exec cp {} /core/capture/  \;'
 			 $sshbalancefile = 'sudo find /core/capture/replica_distribution_file*.csv -maxdepth 1 -type f'
  
