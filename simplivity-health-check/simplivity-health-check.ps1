@@ -849,8 +849,14 @@ function Test-Net-Connection($destination)  {
 			 Write-Host "`n### Simplivity Backup Policies ###" -ForegroundColor White
 			 $BackupRulesTable | Format-Table -Property 'Policy Name', 'Backup Days', 'Rule Number', 'Destination', 'External Store Name', 'Frequency - Hours', 'Expiration Time - Day'
 
+             # Display Simplivity Backup Policy Report
+			 Write-Host "`n### Display Simplivity Backup Policy Report ###`n" -ForegroundColor White
+             $SvtBackupReportCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-policy-report-show"	
+			 $SvtBackupReport = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtBackupReportCmd -TimeOut 60
+			 $SvtBackupReport.Output	
+
              # Displays information about the backups queued for replication on the backup state machine
-			 Write-Host "### Backups Queued For Replication On The Backup State Machine ###`n" -ForegroundColor White
+			 Write-Host "`n### Backups Queued For Replication On The Backup State Machine ###`n" -ForegroundColor White
 			 $SvtBackupQueueCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/dsv/dsv-backup-util --operation state-info"
 			 $SvtBackupQueue = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtBackupQueueCmd  -TimeOut 60
 			 if ($SvtBackupQueue.Output) {
@@ -859,11 +865,37 @@ function Test-Net-Connection($destination)  {
 				 Write-Host "`nSimplivity Backup Queue Is Empty On The Backup State Machine For Replication... `n"
 			 }
 			 
+			 # Display information about the external stores registered in the federation
+			 Write-Host "`n### Display Information About The External Stores ###`n" -ForegroundColor White
+			 $SvtExternalStoreCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-external-store-show"
+			 $SvtExternalStore = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtExternalStoreCmd  -TimeOut 60
+			 if ($SvtExternalStore.Output) {
+				 $SvtExternalStore.Output
+			 }else {
+				 Write-Host "`nThere Is No External Backup Store Defined In The System... `n"
+			 }
+			 
 			 # Display Datacenter Balance State
 			 Write-Host "`n### Datacenter Resource Balancing State ###`n" -ForegroundColor White
-             $SvtBalanceCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-balance-show --shownodeip --consumption --showHiveName"	
+             $SvtBalanceNodeCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-balance-show --shownodeip"	
+			 $SvtBalanceNode = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtBalanceNodeCmd -TimeOut 60
+			 $SvtBalanceNode.Output	
+			 
+			 $SvtBalanceCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-balance-show --status --consumption --showHiveName"	
 			 $SvtBalance = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtBalanceCmd -TimeOut 60
 			 $SvtBalance.Output	
+			 
+			 # Displays the counters broadcast tree provider.
+			 Write-Host "`n### Displays The Counters Broadcast Tree Provider ###`n" -ForegroundColor White
+             $SvtBroadcastCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-broadcasttreeprovider-counters-show"	
+			 $SvtBroadcast = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtBroadcastCmd -TimeOut 60
+			 $SvtBroadcast.Output	
+			 
+			 # Displays Election Service Counters .
+			 Write-Host "`n### Displays Election Service Counters ###`n" -ForegroundColor White
+             $SvtElectionCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-electionservice-counters-show"	
+			 $SvtElection = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtElectionCmd -TimeOut 60
+			 $SvtElection.Output	
 			 
 			 # Get Virtual Machine Replica Sets
 			 Write-Host "`n### Virtual Machine Replica Sets  ###" -ForegroundColor White
@@ -983,8 +1015,8 @@ function Test-Net-Connection($destination)  {
 				 $shutdownstatecheck = $null
 				 # Get ESXI Host Infromation
 				 $esxihost = Get-VMHost -Name $svthost.name  | Select-Object -Property NumCpu, CpuTotalMhz, CpuUsageMhz, MemoryTotalGB, MemoryUsageGB, Version, Build, @{N="BIOS_Major_Release";E={$_.ExtensionData.Hardware.BiosInfo.MajorRelease}}, @{N="BIOS_Minor_Rlease";E={$_.ExtensionData.Hardware.BiosInfo.MinorRelease}}, @{N="BIOS_ReleaseDate";E={$_.ExtensionData.Hardware.BiosInfo.ReleaseDate}}
-                 $esxihostmgmtip = Get-VMHost -Name $svthost.name | Select-Object -ExpandProperty ExtensionData | ForEach-Object { $_.Config.Network.Vnic[0].Spec.Ip.IpAddress }
-                 $esxibmcip = (Get-EsxCli -VMHost $svthost.name -V2).hardware.ipmi.bmc.get.Invoke().IPv4Address 
+         $esxihostmgmtip = Get-VMHost -Name $svthost.name | Select-Object -ExpandProperty ExtensionData | ForEach-Object { $_.Config.Network.Vnic[0].Spec.Ip.IpAddress }
+         $esxibmcip = (Get-EsxCli -VMHost $svthost.name -V2).hardware.ipmi.bmc.get.Invoke().IPv4Address 
 				 $percentCpu = $(($esxihost.CpuUsageMhz / $esxihost.CpuTotalMhz ) * 100).ToString("F0")
 				 $percentMem = $(($esxihost.MemoryUsageGB / $esxihost.MemoryTotalGB ) * 100).ToString("F0")	
                  $NetTestCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-network-test --datacenter `"$($selecteddcname)`" --cluster `"$($selectedclsname)`""  
@@ -1094,9 +1126,9 @@ function Test-Net-Connection($destination)  {
 				 
 				 Write-Host "`nModel Number:                $($hosthwinfo.host.model_number)"
 				 Write-Host "Serial Number:               $($hosthwinfo.host.serial_number)"
-                 Write-Host "ILO Management IP:           $($esxibmcip)"
-                 Write-Host "SVT Host BIOS Release Date:  $($esxihost.BIOS_ReleaseDate)"
-                 Write-Host "SVT Host BIOS Release:       $($esxihost.BIOS_Major_Release).$($esxihost.BIOS_Minor_Rlease)"
+         Write-Host "ILO Management IP:           $($esxibmcip)"
+         Write-Host "SVT Host BIOS Release Date:  $($esxihost.BIOS_ReleaseDate)"
+         Write-Host "SVT Host BIOS Release:       $($esxihost.BIOS_Major_Release).$($esxihost.BIOS_Minor_Rlease)"
 				 Write-Host "Simplivity Firmware Vers:    $($hosthwinfo.host.firmware_revision)"
                                      
 				 if ($hosthwinfo.host.status -eq 'GREEN') {
