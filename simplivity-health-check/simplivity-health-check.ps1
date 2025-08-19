@@ -40,8 +40,8 @@
 	Always run the PowerShell in administrator mode to execute the script.
 	
     Company : Hewlett Packard Enterprise
-    Version : 3.2.0.0
-    Date    : 06/20/2025
+    Version : 3.3.0.0
+    Date    : 08/19/2025
 	AUTHOR  : Emre Baykal - HPE Services
 #>
 
@@ -1022,6 +1022,8 @@ function Test-Net-Connection($destination)  {
                  $NetTestCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-network-test --datacenter `"$($selecteddcname)`" --cluster `"$($selectedclsname)`""  
 				 $ServiceStateCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-managed-service-show"
 				 $cfgdbstateCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-cfgdb-get-sync-status"
+				 $nodecomplianceCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-node-compliance"
+				 $watchdogstateCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-watchdog-show"
 				 $NetStateCmd = "/bin/netstat -win"	
                  $shutdownstateCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-shutdown-status"				 
 				 $HOSTReportFile = "$($global:ReportDirPath)\$($svthost.name)-$($logtimestamp).log"
@@ -1202,6 +1204,16 @@ function Test-Net-Connection($destination)  {
 				$cfgdbstate = Invoke-SSHcommand -SessionId $OVCSession.SessionID -Command $cfgdbstateCmd -TimeOut 60
 				Write-Host "`n# Omnistack Virutal Controller - $($svthost.virtual_controller_name) CfgDB Sync Status #`n" -ForegroundColor White
 				$cfgdbstate.Output
+				
+				# Performs an HA compliance check on a system.
+				$nodecompliance = Invoke-SSHcommand -SessionId $OVCSession.SessionID -Command $nodecomplianceCmd -TimeOut 60
+				Write-Host "`n# Performs an HA compliance check on SVT Host - $($svthost.name) #`n" -ForegroundColor White
+				$nodecompliance.Output
+				
+				# Display information about the SVT Watchdog settings.
+				$watchdogstate = Invoke-SSHcommand -SessionId $OVCSession.SessionID -Command $watchdogstateCmd -TimeOut 60
+				Write-Host "`n# Omnistack Virutal Controller - $($svthost.virtual_controller_name)  SVT Watchdog Status Information #`n" -ForegroundColor White
+				$watchdogstate.Output
 				
 				# Display Service States
 				$ServiceState = Invoke-SSHcommand -SessionId $OVCSession.SessionID -Command $ServiceStateCmd -TimeOut 60
