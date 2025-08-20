@@ -40,8 +40,8 @@
 	Always run the PowerShell in administrator mode to execute the script.
 	
     Company : Hewlett Packard Enterprise
-    Version : 3.3.0.0
-    Date    : 08/19/2025
+    Version : 3.2.0.0
+    Date    : 06/20/2025
 	AUTHOR  : Emre Baykal - HPE Services
 #>
 
@@ -654,6 +654,9 @@ function Test-Net-Connection($destination)  {
              $start = (Get-Date).AddHours(-24)
              $VCAlerts = Get-VIEvent -Start $start -MaxSamples ([int]::MaxValue) | Where-Object {$_ -is [VMware.Vim.AlarmStatusChangedEvent] -and ($_.To -match "red|yellow") -and ($_.FullFormattedMessage -notlike "*Virtual machine*")` -and ($_.CreatedTime -gt $VCEventDate)}
 
+             # Display Detail of VMWare vCenter Critical Events For The Last 24 Hours
+			 Write-Host "`n### VMWare vCenter Critical Events For The Last 24 Hours ###" -ForegroundColor White
+
              if ($VCAlerts) {
 				 
 				 foreach ($VCAlertsDetail in $VCAlerts) {
@@ -664,8 +667,6 @@ function Test-Net-Connection($destination)  {
 					 $VCAlertsTable += $VCAlertsInfo
 				} 
 				
-				 # Display Detail of SVT Host to the table
-			     Write-Host "`n### VMWare vCenter Critical Events For The Last 24 Hours ###" -ForegroundColor White
 			     $VCAlertsTable | Sort-Object -Property 'Alert Created Time' -Descending | Format-Table -Property 'VMWare vCenter Events', 'Alert Created Time' | Format-Table -AutoSize
 			 
 			  }else {
@@ -775,7 +776,7 @@ function Test-Net-Connection($destination)  {
 			      			 
 			 ## Active VM Alarms
              $VMAlarmReport = @()
-             $VMStatus = (Get-VM | Get-View) | Select-Object Name,OverallStatus,ConfigStatus,TriggeredAlarmState
+             $VMStatus = (Get-VM | Get-View) 
              $VMErrors = $VMStatus  | Where-Object {$_.OverallStatus -ne "Green"}
 
              if ($VMErrors) {
@@ -785,15 +786,17 @@ function Test-Net-Connection($destination)  {
                               'Virtual Machine Name' = $VMError.Name
                               'Over All Status' = $VMError.OverallStatus
                               'Triggered Alarms' = (Get-AlarmDefinition -Id $TriggeredAlarm.Alarm).Name
+							  'Alarm Created Time' = $TriggeredAlarm.Time  
+                              'Alarm Acknowledged' = $TriggeredAlarm.Acknowledged  
                             }
-                        [array]$VMAlarms += New-Object PSObject -Property $VMprops
+                        [array]$VMAlarmReport += New-Object PSObject -Property $VMprops
                       }
                  }
             }
 
 		    Write-Host "### Virtual Machine Active Alarms ###" -ForegroundColor White
-            if ($VMAlarms){
-	             $VMAlarms | Format-Table -Property 'Virtual Machine Name', 'Over All Status', 'Triggered Alarms'
+            if ($VMAlarmReport){
+	             $VMAlarmReport | Format-Table -Property 'Virtual Machine Name', 'Over All Status', 'Triggered Alarms', 'Alarm Created Time', 'Alarm Acknowledged'
             }else{
 	             Write-Host "`nNo Active Alerts Found On Virtual Machines... "
             }   
@@ -1207,7 +1210,7 @@ function Test-Net-Connection($destination)  {
 				
 				# Performs an HA compliance check on a system.
 				$nodecompliance = Invoke-SSHcommand -SessionId $OVCSession.SessionID -Command $nodecomplianceCmd -TimeOut 60
-				Write-Host "`n# Performs an HA compliance check on SVT Host - $($svthost.name) #`n" -ForegroundColor White
+				Write-Host "`n# Performs an HA compliance check Omnistack Virutal Controller - $($svthost.virtual_controller_name) #`n" -ForegroundColor White
 				$nodecompliance.Output
 				
 				# Display information about the SVT Watchdog settings.
