@@ -1018,8 +1018,8 @@ function Test-Net-Connection($destination)  {
 				 $shutdownstatecheck = $null
 				 # Get ESXI Host Infromation
 				 $esxihost = Get-VMHost -Name $svthost.name  | Select-Object -Property NumCpu, CpuTotalMhz, CpuUsageMhz, MemoryTotalGB, MemoryUsageGB, Version, Build, @{N="BIOS_Major_Release";E={$_.ExtensionData.Hardware.BiosInfo.MajorRelease}}, @{N="BIOS_Minor_Rlease";E={$_.ExtensionData.Hardware.BiosInfo.MinorRelease}}, @{N="BIOS_ReleaseDate";E={$_.ExtensionData.Hardware.BiosInfo.ReleaseDate}}
-         $esxihostmgmtip = Get-VMHost -Name $svthost.name | Select-Object -ExpandProperty ExtensionData | ForEach-Object { $_.Config.Network.Vnic[0].Spec.Ip.IpAddress }
-         $esxibmcip = (Get-EsxCli -VMHost $svthost.name -V2).hardware.ipmi.bmc.get.Invoke().IPv4Address 
+                 $esxihostmgmtip = Get-VMHost -Name $svthost.name | Select-Object -ExpandProperty ExtensionData | ForEach-Object { $_.Config.Network.Vnic[0].Spec.Ip.IpAddress }
+                 $esxibmcip = (Get-EsxCli -VMHost $svthost.name -V2).hardware.ipmi.bmc.get.Invoke().IPv4Address 
 				 $percentCpu = $(($esxihost.CpuUsageMhz / $esxihost.CpuTotalMhz ) * 100).ToString("F0")
 				 $percentMem = $(($esxihost.MemoryUsageGB / $esxihost.MemoryTotalGB ) * 100).ToString("F0")	
                  $NetTestCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-network-test --datacenter `"$($selecteddcname)`" --cluster `"$($selectedclsname)`""  
@@ -1131,9 +1131,9 @@ function Test-Net-Connection($destination)  {
 				 
 				 Write-Host "`nModel Number:                $($hosthwinfo.host.model_number)"
 				 Write-Host "Serial Number:               $($hosthwinfo.host.serial_number)"
-         Write-Host "ILO Management IP:           $($esxibmcip)"
-         Write-Host "SVT Host BIOS Release Date:  $($esxihost.BIOS_ReleaseDate)"
-         Write-Host "SVT Host BIOS Release:       $($esxihost.BIOS_Major_Release).$($esxihost.BIOS_Minor_Rlease)"
+                 Write-Host "ILO Management IP:           $($esxibmcip)"
+                 Write-Host "SVT Host BIOS Release Date:  $($esxihost.BIOS_ReleaseDate)"
+                 Write-Host "SVT Host BIOS Release:       $($esxihost.BIOS_Major_Release).$($esxihost.BIOS_Minor_Rlease)"
 				 Write-Host "Simplivity Firmware Vers:    $($hosthwinfo.host.firmware_revision)"
                                      
 				 if ($hosthwinfo.host.status -eq 'GREEN') {
