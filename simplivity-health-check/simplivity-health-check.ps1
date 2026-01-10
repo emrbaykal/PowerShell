@@ -503,16 +503,19 @@ function Test-Net-Connection($destination)  {
 			 Write-Host "#                                    HPE Simplivity Cluster Health Check Report                                             #" -ForegroundColor Yellow
 			 Write-Host "#############################################################################################################################`n" -ForegroundColor Yellow
  
+             Write-Host "`n"
 			 Write-Host "`nReport Creation Date: $($reportdate)" 
 			 Write-Host "Customer Name:        $($global:customername)" 	
 			 Write-Host "Customer E-Mail:      $($global:customermail)" 
 			 Write-Host "Company Name:         $($global:companyname)`n" 
 
+             Write-Host "`n"
 			 Write-Host "`n### VMWare Virtual Center  ###" -ForegroundColor White
 			 Write-Host "`nvCenter Server Name:             $($VMWareVcenter.Name)"
 			 Write-Host "vCenter Server Version:          $($VMWareVcenter.Version)"
 			 Write-Host "vCenter Server Build Number:     $($VMWareVcenter.Build)"
 			 
+			 Write-Host "`n"
 			 Write-Host "`n### SVT Cluster State ###" -ForegroundColor White
 			 
 			 # Get VMWare Cluster State
@@ -582,7 +585,7 @@ function Test-Net-Connection($destination)  {
 			 $percentFree = $(($clusterstate.omnistack_clusters[0].free_space / $clusterstate.omnistack_clusters[0].allocated_capacity) * 100).ToString("F2")	
 			 $efficiency_ratio = $($clusterstate.omnistack_clusters[0].efficiency_ratio) 
  
-			 
+			 Write-Host "`n"
 			 Write-Host "`n### SVT Cluster Storage State ###" -ForegroundColor White
 			 Write-Host "`nHPE Simplivity Efficiency Ratio:   $efficiency_ratio" 
 			 Write-Host "Pysical Space:                     $pysical_space TiB" 
@@ -619,6 +622,8 @@ function Test-Net-Connection($destination)  {
 					 }
 					 $HostTable += $HostInfo
 			 }
+			 
+			 Write-Host "`n"
 			 # Display Detail of SVT Host to the table
 			 Write-Host "`n### Simplivity (ESXI) Hosts List ###" -ForegroundColor White
 			 $HostTable | Sort -Property 'CpuUsage %', 'MemoryUsage %' | Format-Table -Property 'Name', 'ConnectionState', 'PowerState', 'OverallStatus', 'RebootRequired', 'NumCpu', 'CpuUsage %', 'TotalMem(GB)', 'MemoryUsage %', 'Version' | Format-Table -AutoSize
@@ -655,6 +660,7 @@ function Test-Net-Connection($destination)  {
              $VCAlerts = Get-VIEvent -Start $start -MaxSamples ([int]::MaxValue) | Where-Object {$_ -is [VMware.Vim.AlarmStatusChangedEvent] -and ($_.To -match "red|yellow") -and ($_.FullFormattedMessage -notlike "*Virtual machine*")` -and ($_.CreatedTime -gt $VCEventDate)}
 
              # Display Detail of VMWare vCenter Critical Events For The Last 24 Hours
+			 Write-Host "`n"
 			 Write-Host "`n### VMWare vCenter Critical Events For The Last 24 Hours ###" -ForegroundColor White
 
              if ($VCAlerts) {
@@ -696,12 +702,14 @@ function Test-Net-Connection($destination)  {
 			 }
 			  
              # Shows Datacenter has Intelligent Workload Optimizer enabled or disabled ?
+			 Write-Host "`n"
 			 Write-Host "`n### Intelligent Workload Optimizer State ###`n" -ForegroundColor White
 			 $SvtIntWorkCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-iwo-show --datacenter `"$($selecteddcname)`" --cluster `"$($selectedclsname)`""
 			 $SvtIntWork = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtIntWorkCmd  -TimeOut 60
 			 $SvtIntWork.Output  
 			 
 			 # Get SVT Datastore Status
+			 Write-Host "`n"
 			 Write-Host "`n### Simplivity Datastore List ###" -ForegroundColor White
 			 $DSDetailList = Get-SvtDatastore | Where-Object  ClusterName -eq $clusterstate.omnistack_clusters[0].name |  Select-Object DatastoreName, SizeGB, SingleReplica, ClusterName, Deleted, PolicyName
 			 $DatastoreTable = @()
@@ -820,6 +828,7 @@ function Test-Net-Connection($destination)  {
 	            }
             }
 
+            Write-Host "`n"
             Write-Host "`n### Snapshots Older Than $($snapshotdays) Days ###" -ForegroundColor White
             if ($SnapshotDateReport) {
                 $VMSnapshotReport | Format-Table -Property 'VM Name', 'Snapshot Name', 'Snapshot Creation Date', 'Snapshot Description'
@@ -859,6 +868,7 @@ function Test-Net-Connection($destination)  {
 			 $SvtBackupReport.Output	
 
              # Displays information about the backups queued for replication on the backup state machine
+			 Write-Host "`n"
 			 Write-Host "`n### Backups Queued For Replication On The Backup State Machine ###`n" -ForegroundColor White
 			 $SvtBackupQueueCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/dsv/dsv-backup-util --operation state-info"
 			 $SvtBackupQueue = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtBackupQueueCmd  -TimeOut 60
@@ -869,6 +879,7 @@ function Test-Net-Connection($destination)  {
 			 }
 			 
 			 # Display information about the external stores registered in the federation
+			 Write-Host "`n"
 			 Write-Host "`n### Display Information About The External Stores ###`n" -ForegroundColor White
 			 $SvtExternalStoreCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-external-store-show"
 			 $SvtExternalStore = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtExternalStoreCmd  -TimeOut 60
@@ -879,6 +890,7 @@ function Test-Net-Connection($destination)  {
 			 }
 			 
 			 # Display Datacenter Balance State
+			 Write-Host "`n"
 			 Write-Host "`n### Datacenter Resource Balancing State ###`n" -ForegroundColor White
              $SvtBalanceNodeCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-balance-show --shownodeip"	
 			 $SvtBalanceNode = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtBalanceNodeCmd -TimeOut 60
@@ -889,18 +901,21 @@ function Test-Net-Connection($destination)  {
 			 $SvtBalance.Output	
 			 
 			 # Displays the counters broadcast tree provider.
+			 Write-Host "`n"
 			 Write-Host "`n### Displays The Counters Broadcast Tree Provider ###`n" -ForegroundColor White
              $SvtBroadcastCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-broadcasttreeprovider-counters-show"	
 			 $SvtBroadcast = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtBroadcastCmd -TimeOut 60
 			 $SvtBroadcast.Output	
 			 
 			 # Displays Election Service Counters .
+			 Write-Host "`n"
 			 Write-Host "`n### Displays Election Service Counters ###`n" -ForegroundColor White
              $SvtElectionCmd = "source /var/tmp/build/bin/appsetup; sudo /var/tmp/build/dsv/dsv-electionservice-counters-show"	
 			 $SvtElection = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtElectionCmd -TimeOut 60
 			 $SvtElection.Output	
 			 
 			 # Get Virtual Machine Replica Sets
+			 Write-Host "`n"
 			 Write-Host "`n### Virtual Machine Replica Sets  ###" -ForegroundColor White
 			 $SvtVMReplicaSet = Get-SVTvmReplicaSet -ClusterName $clusterstate.omnistack_clusters[0].name 
 			 # Create a table to display virtual machine replicaset information
@@ -929,7 +944,8 @@ function Test-Net-Connection($destination)  {
 			 }
 			 # Display Detail of VM ReplicaSet to the table
 			 $ReplicaSetTable | Sort -Property 'Primary Replica Location   ' | Format-Table -Property 'VM Name         ', 'State     ', 'SVT HA Status   ', 'Space(GB)', 'Primary Replica Location   ', 'Secondary Replica Location '
-			        	
+			  
+             Write-Host "`n"			  
 			 Write-Host "`n### SimpliVity Displaced VM List ###" -ForegroundColor White
              foreach ($VMList in $VMDetailList) {
                  $VMReplica = $SvtVMReplicaSet | Where-Object VmName -EQ $VMList.VmName
@@ -956,6 +972,7 @@ function Test-Net-Connection($destination)  {
 			 $vmreplicasetdegreded = $SvtVMReplicaSet | Where-Object  HAStatus -eq  DEGRADED
 			 
 			 # Display Support State
+			 Write-Host "`n"
 			 Write-Host "`n### Datacenter Support Reg. State ###`n" -ForegroundColor White
 			 $SvtSupportCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-support-show --datacenter `"$($selecteddcname)`" --cluster `"$($selectedclsname)`""
 			 $SvtSupport = Invoke-SSHcommand -SessionId $SSHOVCSession.SessionID -Command $SvtSupportCmd  -TimeOut 60
