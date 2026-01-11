@@ -40,7 +40,7 @@
 	Always run the PowerShell in administrator mode to execute the script.
 	
     Company : Hewlett Packard Enterprise
-    Version : 4.1.0.0
+    Version : 4.0.0.0
     Date    : 01/11/2026
 	AUTHOR  : Emre Baykal - HPE Services
 #>
