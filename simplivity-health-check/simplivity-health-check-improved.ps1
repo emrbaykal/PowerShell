@@ -797,7 +797,7 @@ function Test-Net-Connection($destination)  {
 				 
 			 }
 			  
-             # Shows Datacenter has Intelligent Workload Optimizer enabled or disabled ?
+             # Shows Datacenter has Inteelligent Workload Optimizer enabled or disabled ?
 			 Write-Host "`n"
 			 Write-Host "`n### Intelligent Workload Optimizer State ###`n" -ForegroundColor White
 			 $SvtIntWorkCmd = "source /var/tmp/build/bin/appsetup; /var/tmp/build/cli/svt-iwo-show --datacenter `"$($selecteddcname)`" --cluster `"$($selectedclsname)`""
